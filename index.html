@@ -3,201 +3,78 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Google AI Studio 对话记录转 Markdown</title>
+  <title>Google AI Studio 会话阅读与导出</title>
 
   <!-- Google 身份认证客户端库 -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 
-  <!-- Markdown 解析与代码高亮依赖 -->
+  <!-- GitHub Markdown 官方样式与代码高亮 -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css@5.5.1/github-markdown.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css">
+
   <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
 
   <style>
     :root {
-      --bg: #f8fafc;
+      --bg: #f6f8fa;
       --card-bg: #ffffff;
-      --primary: #2563eb;
-      --primary-hover: #1d4ed8;
-      --border: #e2e8f0;
-      --border-focus: #94a3b8;
-      --text: #1e293b;
-      --text-muted: #64748b;
-      --success: #10b981;
-      --danger: #ef4444;
-      --warning: #f59e0b;
+      --primary: #0969da;
+      --primary-hover: #085cc1;
+      --primary-light: #eff6ff;
+      --border: #d0d7de;
+      --text: #1f2328;
+      --text-muted: #57606a;
+      --success: #1a7f37;
+      --danger: #cf222e;
+      --header-height: 52px;
     }
 
     * { box-sizing: border-box; }
 
     body {
+      margin: 0;
+      padding: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       background-color: var(--bg);
       color: var(--text);
-      line-height: 1.6;
-      margin: 0;
-      padding: 32px 16px;
-    }
-
-    .container {
-      max-width: 920px;
-      margin: 0 auto;
-      background: var(--card-bg);
-      padding: 32px;
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-    }
-
-    .header-bar {
+      min-height: 100vh;
       display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 24px;
-      gap: 16px;
-      flex-wrap: wrap;
+      flex-direction: column;
     }
 
-    .header-titles h1 {
-      margin: 0 0 6px 0;
-      font-size: 20px;
+    /* 顶部吸顶工具栏 */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background-color: var(--card-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px;
+      height: var(--header-height);
+    }
+
+    .brand {
       font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      user-select: none;
+    }
+
+    .header-actions {
       display: flex;
       align-items: center;
       gap: 10px;
     }
 
-    .header-titles p {
-      margin: 0;
-      color: var(--text-muted);
-      font-size: 13.5px;
-    }
-
-    .auth-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 12px;
-      background: #f1f5f9;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      font-size: 13px;
-    }
-
-    .auth-badge.authorized {
-      background: #ecfdf5;
-      border-color: #a7f3d0;
-      color: #065f46;
-    }
-
-    .upload-zone {
-      border: 2px dashed #cbd5e1;
-      border-radius: 8px;
-      padding: 24px 20px;
-      text-align: center;
-      background: #f8fafc;
-      transition: border-color 0.2s, background-color 0.2s;
-    }
-
-    .upload-zone:hover, .upload-zone.dragover {
-      border-color: var(--primary);
-      background: #eff6ff;
-    }
-
-    .upload-zone svg {
-      width: 32px;
-      height: 32px;
-      color: var(--text-muted);
-      margin-bottom: 6px;
-    }
-
-    .channel-divider {
-      display: flex;
-      align-items: center;
-      text-align: center;
-      margin: 16px 0;
-      color: var(--text-muted);
-      font-size: 12px;
-    }
-
-    .channel-divider::before, .channel-divider::after {
-      content: '';
-      flex: 1;
-      border-bottom: 1px solid var(--border);
-    }
-    .channel-divider:not(:empty)::before { margin-right: 12px; }
-    .channel-divider:not(:empty)::after { margin-left: 12px; }
-
-    .options-panel {
-      margin-top: 20px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 16px;
-      font-size: 13px;
-      background: #f8fafc;
-      padding: 12px 16px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-    }
-
-    .options-panel label {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      cursor: pointer;
-      user-select: none;
-    }
-
-    .action-group {
-      margin-top: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
-    .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
-
-    button {
-      background: var(--primary);
-      color: #ffffff;
-      border: 1px solid transparent;
-      padding: 8px 16px;
-      border-radius: 6px;
-      font-size: 13.5px;
-      font-weight: 500;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      transition: background-color 0.15s;
-    }
-
-    button:hover:not(:disabled) { background: var(--primary-hover); }
-    button:disabled { background: #e2e8f0; color: #94a3b8; cursor: not-allowed; }
-
-    .btn-secondary { background: #ffffff; color: var(--text); border-color: var(--border); }
-    .btn-secondary:hover:not(:disabled) { background: #f1f5f9; }
-
-    .btn-outline-primary { background: #ffffff; color: var(--primary); border-color: var(--primary); }
-    .btn-outline-primary:hover:not(:disabled) { background: #eff6ff; }
-
-    .status-msg { font-size: 13px; font-weight: 500; }
-    .status-msg.success { color: var(--success); }
-    .status-msg.error { color: var(--danger); }
-    .status-msg.warning { color: var(--warning); }
-
-    /* 预览面板及模式切换 */
-    .preview-section { margin-top: 24px; }
-    .preview-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
-    }
-
+    /* 模式切换胶囊按钮 */
     .view-switch {
       display: inline-flex;
       background: #f1f5f9;
@@ -208,13 +85,14 @@
 
     .view-switch-btn {
       padding: 4px 12px;
-      font-size: 12px;
+      font-size: 12.5px;
       font-weight: 500;
       color: var(--text-muted);
       background: transparent;
       border: none;
       border-radius: 4px;
       cursor: pointer;
+      transition: all 0.15s ease;
     }
 
     .view-switch-btn.active {
@@ -223,34 +101,217 @@
       box-shadow: 0 1px 2px rgba(0,0,0,0.06);
     }
 
-    textarea.preview-content {
-      width: 100%;
-      height: 480px;
-      box-sizing: border-box;
+    /* 按钮通用规范 */
+    .btn {
+      padding: 6px 12px;
       border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 14px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      font-size: 12.5px;
-      line-height: 1.6;
-      background: #ffffff;
-      resize: vertical;
-      outline: none;
+      background-color: var(--card-bg);
+      color: var(--text);
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+      transition: background-color 0.15s, border-color 0.15s;
     }
 
-    .rendered-preview {
+    .btn:hover { background-color: #f3f4f6; }
+    .btn-primary {
+      background-color: var(--primary);
+      color: #ffffff;
+      border-color: var(--primary);
+    }
+    .btn-primary:hover { background-color: var(--primary-hover); }
+
+    .auth-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      background: #f1f5f9;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+    .auth-badge.authorized {
+      background: #ecfdf5;
+      border-color: #a7f3d0;
+      color: var(--success);
+    }
+
+    /* 1. 初始工作台视图 */
+    .workspace-container {
+      max-width: 900px;
+      margin: 48px auto;
+      padding: 0 20px;
       width: 100%;
-      min-height: 480px;
-      max-height: 640px;
-      overflow-y: auto;
+    }
+
+    .workspace-header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .workspace-header h2 { margin: 0 0 8px; font-size: 24px; font-weight: 600; }
+    .workspace-header p { margin: 0; color: var(--text-muted); font-size: 14px; }
+
+    .drive-hero-card {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      text-align: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+      margin-bottom: 24px;
+      transition: border-color 0.2s;
+    }
+    .drive-hero-card:hover { border-color: var(--primary); }
+
+    .grid-panels {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 640px) {
+      .grid-panels { grid-template-columns: 1fr; }
+    }
+
+    .panel-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .dropzone {
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      flex: 1;
+      min-height: 150px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: #fafbfc;
+      cursor: pointer;
+      text-align: center;
+      padding: 16px;
+      transition: 0.2s;
+    }
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--primary);
+      background: var(--primary-light);
+    }
+
+    .options-grid {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      font-size: 13px;
+    }
+    .options-grid label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    /* 2. 沉浸式阅读视图 */
+    main.reader-container {
+      max-width: 900px;
+      width: 100%;
+      margin: 24px auto 80px;
+      padding: 0 16px;
+    }
+
+    .markdown-body {
+      background-color: var(--card-bg) !important;
+      padding: 44px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+      position: relative;
+    }
+
+    /* 代码块与悬浮复制按钮 */
+    .markdown-body pre { position: relative; }
+    .code-copy-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      font-size: 12px;
+      padding: 3px 8px;
+      color: var(--text-muted);
+      background: #f6f8fa;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.15s, background-color 0.15s;
+    }
+    .markdown-body pre:hover .code-copy-btn,
+    .code-copy-btn:focus { opacity: 1; }
+    .code-copy-btn:hover { background: #e9ecef; color: var(--text); }
+
+    /* 源码展示文本框 */
+    .raw-source-textarea {
+      width: 100%;
+      min-height: 700px;
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 24px;
-      background: #ffffff;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      background: var(--card-bg);
+      resize: vertical;
+      outline: none;
       box-sizing: border-box;
     }
 
-    /* 云端硬盘文件弹窗 */
+    /* 回到顶部按钮 */
+    .back-to-top {
+      position: fixed;
+      bottom: 32px;
+      right: 32px;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+      color: var(--text);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(8px);
+      transition: all 0.2s ease;
+      z-index: 90;
+    }
+    .back-to-top.visible {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+    .back-to-top:hover {
+      background: #f3f4f6;
+      color: var(--primary);
+    }
+
+    /* 云端硬盘弹窗 */
     .modal-backdrop {
       position: fixed;
       inset: 0;
@@ -273,7 +334,6 @@
       box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
       overflow: hidden;
     }
-
     .modal-header {
       padding: 14px 20px;
       border-bottom: 1px solid var(--border);
@@ -281,13 +341,11 @@
       align-items: center;
       justify-content: space-between;
     }
-
     .modal-filter-bar {
       padding: 10px 20px;
       border-bottom: 1px solid var(--border);
       background: #fafbfc;
     }
-
     .modal-search-input {
       width: 100%;
       padding: 7px 12px;
@@ -295,17 +353,12 @@
       border: 1px solid var(--border);
       border-radius: 6px;
       outline: none;
-      box-sizing: border-box;
     }
-
-    .modal-search-input:focus { border-color: var(--primary); }
-
     .modal-body {
       padding: 8px 16px;
       overflow-y: auto;
       flex: 1;
     }
-
     .drive-file-item {
       display: flex;
       align-items: center;
@@ -316,9 +369,7 @@
       cursor: pointer;
       transition: background-color 0.15s;
     }
-
     .drive-file-item:hover { background-color: #f1f5f9; }
-
     .drive-file-title {
       font-size: 13.5px;
       font-weight: 500;
@@ -331,13 +382,7 @@
       white-space: nowrap;
       padding-right: 12px;
     }
-
-    .drive-file-time {
-      font-size: 12px;
-      color: var(--text-muted);
-      white-space: nowrap;
-    }
-
+    .drive-file-time { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
     .modal-footer {
       padding: 10px 20px;
       border-top: 1px solid var(--border);
@@ -350,857 +395,861 @@
 </head>
 <body>
 
-<div class="container">
-  <div class="header-bar">
-    <div class="header-titles">
-      <h1>
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-        </svg>
-        Google AI Studio 对话记录转 Markdown
-      </h1>
-      <p>直接检索云盘历史、深度解析会话切片，支持代码语法高亮与附件嵌入。</p>
-    </div>
-
-    <div class="auth-badge" id="authBadge">
-      <span id="authStatusText">云端硬盘未授权</span>
-      <button class="btn-outline-primary" id="authBtn" style="padding: 4px 10px; font-size: 12px;">登录授权</button>
-    </div>
-  </div>
-
-  <div style="margin-bottom: 14px;">
-    <button id="openDrivePickerBtn" class="btn-outline-primary" style="width: 100%; justify-content: center; padding: 12px; font-size: 14px;">
+  <!-- 顶部状态与工具栏 -->
+  <header>
+    <div class="brand">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+        <line x1="16" y1="13" x2="8" y2="13"></line>
+        <line x1="16" y1="17" x2="8" y2="17"></line>
       </svg>
-      从我的 Google 云端硬盘直接选择对话
-    </button>
-  </div>
-
-  <div class="channel-divider">或通过本地文件导入</div>
-
-  <div class="upload-zone" id="uploadZone">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-      <polyline points="17 8 12 3 7 8"></polyline>
-      <line x1="12" y1="3" x2="12" y2="15"></line>
-    </svg>
-    <div style="font-size: 14px;"><strong>点击选取文件</strong> 或拖放导出文件至此处</div>
-    <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">支持 .json、.txt 或无扩展名的导出文件</div>
-    <input type="file" id="fileInput" style="display: none;">
-  </div>
-
-  <div class="options-panel">
-    <label><input type="checkbox" id="optCardLayout" checked> 卡片式对话排版</label>
-    <label><input type="checkbox" id="optCollapseThoughts" checked> 保留思考过程（折叠展示）</label>
-    <label><input type="checkbox" id="optShowTimestamp" checked> 包含消息时间戳</label>
-    <label><input type="checkbox" id="optExtractSystemPrompt" checked> 解析系统提示词 (System Prompt)</label>
-    <label><input type="checkbox" id="optEmbedTextDocAsCode" checked> 将文本附件作为代码块置于开头</label>
-    <label><input type="checkbox" id="optAutoDownloadDrive" checked> 自动拉取云端附件与图片</label>
-  </div>
-
-  <div class="action-group">
-    <div class="btn-group">
-      <button id="downloadBtn" disabled>
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-          <polyline points="7 10 12 15 17 10"></polyline>
-          <line x1="12" y1="15" x2="12" y2="3"></line>
-        </svg>
-        下载 Markdown 文件
-      </button>
-      <button id="copyBtn" class="btn-secondary" disabled>
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-        </svg>
-        复制到剪贴板
-      </button>
-      <button id="fetchDriveBtn" class="btn-secondary" style="display: none;">
-        📥 重新同步云端附件
-      </button>
+      <span id="headerTitle">Google AI Studio 会话阅读器</span>
     </div>
-    <div id="statusMessage" class="status-msg"></div>
-  </div>
 
-  <div class="preview-section">
-    <div class="preview-header">
-      <div style="display: flex; align-items: center; gap: 12px;">
-        <h2 style="margin: 0; font-size: 14px; font-weight: 600;">预览视图</h2>
+    <div class="header-actions">
+      <!-- 模式切换与操作区 (在阅读模式下显示) -->
+      <div id="readerActions" style="display: none; align-items: center; gap: 8px;">
         <div class="view-switch">
-          <button class="view-switch-btn active" id="btnViewRendered">效果预览</button>
+          <button class="view-switch-btn active" id="btnViewRendered">阅读视图</button>
           <button class="view-switch-btn" id="btnViewRaw">Markdown 源码</button>
         </div>
+        <button class="btn" id="copyMarkdownBtn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+          复制
+        </button>
+        <button class="btn btn-primary" id="downloadMarkdownBtn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          下载 .md
+        </button>
+        <button class="btn" id="reselectBtn">切换对话</button>
       </div>
-      <span class="paste-link" id="pasteJsonTrigger" style="font-size: 12px; color: var(--primary); cursor: pointer;">从剪贴板读取 JSON</span>
+
+      <div class="auth-badge" id="authBadge">
+        <span id="authStatusText">云盘未授权</span>
+        <button id="authBtn" style="border: none; background: none; color: var(--primary); cursor: pointer; padding: 0 2px; font-weight: 500;">授权</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 1. 初始工作台引导容器 -->
+  <div class="workspace-container" id="workspaceView">
+    <div class="workspace-header">
+      <h2>Google AI Studio 会话阅读与转换</h2>
+      <p>从云盘检索、本地文件导入，秒级生成结构化 Markdown 并内嵌完整代码与附件</p>
     </div>
 
-    <!-- 实时渲染视图（支持代码高亮与卡片排版） -->
-    <div id="renderedPreviewArea" class="rendered-preview markdown-body">
-      <div style="color: var(--text-muted); text-align: center; padding-top: 180px;">导入或在云端选择对话后，渲染效果将在此处实时呈现</div>
+    <!-- 云端直通主卡片 -->
+    <div class="drive-hero-card">
+      <div style="font-size: 28px; margin-bottom: 8px;">☁️</div>
+      <h3 style="margin: 0 0 8px 0; font-size: 16px;">直接浏览云端硬盘会话</h3>
+      <p style="margin: 0 0 16px 0; font-size: 13px; color: var(--text-muted);">自动检索 Google AI Studio 目录，无需下载导出，点选即读</p>
+      <button class="btn btn-primary" id="heroOpenDriveBtn" style="padding: 9px 20px; font-size: 14px;">
+        📂 从 Google 云端硬盘选择对话
+      </button>
     </div>
 
-    <!-- Markdown 源码框 -->
-    <textarea id="outputArea" class="preview-content" readonly style="display: none;" placeholder="Markdown 代码源码将显示在此..."></textarea>
+    <!-- 本地导入栅格 -->
+    <div class="grid-panels">
+      <div class="panel-card">
+        <div style="font-weight: 600; font-size: 14px; margin-bottom: 10px;">导入本地文件</div>
+        <div class="dropzone" id="dropzoneArea">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted); margin-bottom: 6px;">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+          <div style="font-size: 13.5px;">拖放 .json、.txt 或无后缀文件至此处</div>
+          <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">或点击选择文件</div>
+        </div>
+        <input type="file" id="localFileInput" style="display: none;">
+      </div>
+
+      <div class="panel-card">
+        <div style="font-weight: 600; font-size: 14px; margin-bottom: 10px;">粘贴 JSON 文本</div>
+        <textarea id="pasteTextInput" style="width: 100%; flex: 1; min-height: 150px; border: 1px dashed var(--border); border-radius: 8px; padding: 12px; font-family: monospace; font-size: 12px; resize: none; outline: none; background: #fafbfc;" placeholder="直接按 Ctrl + V (或 ⌘ + V) 粘贴会话 JSON 内容..."></textarea>
+      </div>
+    </div>
+
+    <!-- 偏好设置 -->
+    <div class="options-grid">
+      <label><input type="checkbox" id="optCardLayout" checked> 卡片式对话布局</label>
+      <label><input type="checkbox" id="optCollapseThoughts" checked> 折叠思考过程 (Thinking)</label>
+      <label><input type="checkbox" id="optShowTimestamp" checked> 显示消息时间戳</label>
+      <label><input type="checkbox" id="optExtractSystemPrompt" checked> 提取系统提示词 (System Prompt)</label>
+      <label><input type="checkbox" id="optEmbedTextDocAsCode" checked> 将文本附件以代码块嵌在开头</label>
+      <label><input type="checkbox" id="optAutoDownloadDrive" checked> 自动同步云端硬盘图片与文档</label>
+    </div>
   </div>
-</div>
 
-<!-- 云端硬盘选择对话弹窗 -->
-<div class="modal-backdrop" id="driveModal">
-  <div class="modal-dialog">
-    <div class="modal-header">
-      <h3 style="margin: 0; font-size: 15px; font-weight: 600;">选择 Google AI Studio 对话</h3>
-      <button id="modalCloseBtn" style="background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted);">&times;</button>
-    </div>
-    <div class="modal-filter-bar">
-      <input type="text" id="modalSearchInput" class="modal-search-input" placeholder="输入关键字搜索对话名称...">
-    </div>
-    <div class="modal-body" id="driveModalList">
-      <div style="text-align: center; padding: 32px 0; color: var(--text-muted);">正在检索云端硬盘...</div>
-    </div>
-    <div class="modal-footer">
-      <span id="modalCounterText" style="font-size: 12px; color: var(--text-muted);">已筛选 0 个会话文件</span>
-      <button id="modalLoadMoreBtn" class="btn-secondary" style="font-size: 12px; padding: 4px 10px; display: none;">加载更早的内容</button>
+  <!-- 2. 全幅沉浸式阅读区域 -->
+  <main class="reader-container" id="readerView" style="display: none;">
+    <!-- 渲染后的 Markdown 视图 -->
+    <article class="markdown-body" id="renderedContainer"></article>
+
+    <!-- Markdown 源码纯文本视图 -->
+    <textarea class="raw-source-textarea" id="rawSourceContainer" readonly style="display: none;"></textarea>
+  </main>
+
+  <!-- 回到顶部悬浮按钮 -->
+  <button id="backToTopBtn" class="back-to-top" title="回到顶部">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M18 15l-6-6-6 6"/>
+    </svg>
+  </button>
+
+  <!-- 云盘文件选择弹窗 -->
+  <div class="modal-backdrop" id="driveModal">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 style="margin: 0; font-size: 15px; font-weight: 600;">选择 Google AI Studio 对话</h3>
+        <button id="modalCloseBtn" style="background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted);">&times;</button>
+      </div>
+      <div class="modal-filter-bar">
+        <input type="text" id="modalSearchInput" class="modal-search-input" placeholder="搜索对话名称...">
+      </div>
+      <div class="modal-body" id="driveModalList">
+        <div style="text-align: center; padding: 32px 0; color: var(--text-muted);">正在检索云端硬盘...</div>
+      </div>
+      <div class="modal-footer">
+        <span id="modalCounterText" style="font-size: 12px; color: var(--text-muted);">已筛选 0 个文件</span>
+        <button id="modalLoadMoreBtn" class="btn" style="font-size: 12px; padding: 4px 10px; display: none;">加载更早的内容</button>
+      </div>
     </div>
   </div>
-</div>
 
-<script>
-  const GOOGLE_CLIENT_ID = '852360108690-naniu3i5sj7frv72de7jn8vq5578bd2b.apps.googleusercontent.com';
-  const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.readonly';
-  const STORAGE_KEY_TOKEN = 'ai_studio_md_token';
-  const STORAGE_KEY_EXPIRY = 'ai_studio_md_token_expiry';
-  const STORAGE_KEY_PERMANENT = 'ai_studio_has_authorized';
+  <script>
+    // 基础配置
+    const GOOGLE_CLIENT_ID = '852360108690-naniu3i5sj7frv72de7jn8vq5578bd2b.apps.googleusercontent.com';
+    const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.readonly';
+    const STORAGE_KEY_TOKEN = 'ai_studio_md_token';
+    const STORAGE_KEY_EXPIRY = 'ai_studio_md_token_expiry';
+    const STORAGE_KEY_PERMANENT = 'ai_studio_has_authorized';
 
-  let tokenClient = null;
-  let accessToken = null;
-  let driveFolderId = null;
-  let driveNextPageToken = null;
-  let allLoadedFiles = [];
+    let tokenClient = null;
+    let accessToken = null;
+    let driveFolderId = null;
+    let driveNextPageToken = null;
+    let allLoadedFiles = [];
 
-  const driveAttachmentCache = new Map();
+    const driveAttachmentCache = new Map();
 
-  const uploadZone = document.getElementById('uploadZone');
-  const fileInput = document.getElementById('fileInput');
-  const outputArea = document.getElementById('outputArea');
-  const renderedPreviewArea = document.getElementById('renderedPreviewArea');
-  const downloadBtn = document.getElementById('downloadBtn');
-  const copyBtn = document.getElementById('copyBtn');
-  const fetchDriveBtn = document.getElementById('fetchDriveBtn');
-  const statusMessage = document.getElementById('statusMessage');
-  const pasteJsonTrigger = document.getElementById('pasteJsonTrigger');
-  const authBadge = document.getElementById('authBadge');
-  const authStatusText = document.getElementById('authStatusText');
-  const authBtn = document.getElementById('authBtn');
-  const openDrivePickerBtn = document.getElementById('openDrivePickerBtn');
-  const driveModal = document.getElementById('driveModal');
-  const modalCloseBtn = document.getElementById('modalCloseBtn');
-  const driveModalList = document.getElementById('driveModalList');
-  const modalSearchInput = document.getElementById('modalSearchInput');
-  const modalCounterText = document.getElementById('modalCounterText');
-  const modalLoadMoreBtn = document.getElementById('modalLoadMoreBtn');
+    // DOM 元素引用
+    const headerTitle = document.getElementById('headerTitle');
+    const readerActions = document.getElementById('readerActions');
+    const authBadge = document.getElementById('authBadge');
+    const authStatusText = document.getElementById('authStatusText');
+    const authBtn = document.getElementById('authBtn');
 
-  const btnViewRendered = document.getElementById('btnViewRendered');
-  const btnViewRaw = document.getElementById('btnViewRaw');
+    const workspaceView = document.getElementById('workspaceView');
+    const readerView = document.getElementById('readerView');
+    const renderedContainer = document.getElementById('renderedContainer');
+    const rawSourceContainer = document.getElementById('rawSourceContainer');
 
-  const optCardLayout = document.getElementById('optCardLayout');
-  const optCollapseThoughts = document.getElementById('optCollapseThoughts');
-  const optShowTimestamp = document.getElementById('optShowTimestamp');
-  const optExtractSystemPrompt = document.getElementById('optExtractSystemPrompt');
-  const optEmbedTextDocAsCode = document.getElementById('optEmbedTextDocAsCode');
-  const optAutoDownloadDrive = document.getElementById('optAutoDownloadDrive');
+    const heroOpenDriveBtn = document.getElementById('heroOpenDriveBtn');
+    const dropzoneArea = document.getElementById('dropzoneArea');
+    const localFileInput = document.getElementById('localFileInput');
+    const pasteTextInput = document.getElementById('pasteTextInput');
 
-  let currentMarkdown = '';
-  let documentTitle = 'chat_export';
-  let parsedPayload = null;
+    const btnViewRendered = document.getElementById('btnViewRendered');
+    const btnViewRaw = document.getElementById('btnViewRaw');
+    const copyMarkdownBtn = document.getElementById('copyMarkdownBtn');
+    const downloadMarkdownBtn = document.getElementById('downloadMarkdownBtn');
+    const reselectBtn = document.getElementById('reselectBtn');
+    const backToTopBtn = document.getElementById('backToTopBtn');
 
-  marked.setOptions({
-    breaks: true,
-    highlight: function(code, lang) {
-      if (lang && hljs.getLanguage(lang)) {
-        return hljs.highlight(code, { language: lang }).value;
+    const driveModal = document.getElementById('driveModal');
+    const modalCloseBtn = document.getElementById('modalCloseBtn');
+    const driveModalList = document.getElementById('driveModalList');
+    const modalSearchInput = document.getElementById('modalSearchInput');
+    const modalCounterText = document.getElementById('modalCounterText');
+    const modalLoadMoreBtn = document.getElementById('modalLoadMoreBtn');
+
+    const optCardLayout = document.getElementById('optCardLayout');
+    const optCollapseThoughts = document.getElementById('optCollapseThoughts');
+    const optShowTimestamp = document.getElementById('optShowTimestamp');
+    const optExtractSystemPrompt = document.getElementById('optExtractSystemPrompt');
+    const optEmbedTextDocAsCode = document.getElementById('optEmbedTextDocAsCode');
+    const optAutoDownloadDrive = document.getElementById('optAutoDownloadDrive');
+
+    let currentMarkdown = '';
+    let documentTitle = 'chat_export';
+    let parsedPayload = null;
+
+    // marked 基础设置
+    marked.setOptions({ breaks: true, gfm: true });
+
+    // 视图切换交互
+    btnViewRendered.addEventListener('click', () => {
+      btnViewRendered.classList.add('active');
+      btnViewRaw.classList.remove('active');
+      renderedContainer.style.display = 'block';
+      rawSourceContainer.style.display = 'none';
+    });
+
+    btnViewRaw.addEventListener('click', () => {
+      btnViewRaw.classList.add('active');
+      btnViewRendered.classList.remove('active');
+      rawSourceContainer.style.display = 'block';
+      renderedContainer.style.display = 'none';
+    });
+
+    reselectBtn.addEventListener('click', () => {
+      workspaceView.style.display = 'block';
+      readerView.style.display = 'none';
+      readerActions.style.display = 'none';
+      headerTitle.textContent = 'Google AI Studio 会话阅读器';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    // 认证与静默无感续期
+    function restoreSavedToken() {
+      const savedToken = localStorage.getItem(STORAGE_KEY_TOKEN);
+      const expiry = localStorage.getItem(STORAGE_KEY_EXPIRY);
+      const hasAuthorized = localStorage.getItem(STORAGE_KEY_PERMANENT);
+
+      if (savedToken && expiry && Date.now() < parseInt(expiry, 10)) {
+        accessToken = savedToken;
+        setAuthorizedUI(true);
+      } else if (hasAuthorized) {
+        attemptSilentTokenRefresh();
+      } else {
+        clearSavedToken();
       }
-      return hljs.highlightAuto(code).value;
     }
-  });
 
-  // 视图切换
-  btnViewRendered.addEventListener('click', () => {
-    btnViewRendered.classList.add('active');
-    btnViewRaw.classList.remove('active');
-    renderedPreviewArea.style.display = 'block';
-    outputArea.style.display = 'none';
-  });
+    function attemptSilentTokenRefresh() {
+      if (tokenClient) tokenClient.requestAccessToken({ prompt: '' });
+    }
 
-  btnViewRaw.addEventListener('click', () => {
-    btnViewRaw.classList.add('active');
-    btnViewRendered.classList.remove('active');
-    outputArea.style.display = 'block';
-    renderedPreviewArea.style.display = 'none';
-  });
-
-  // 恢复授权与静默无感续期
-  function restoreSavedToken() {
-    const savedToken = localStorage.getItem(STORAGE_KEY_TOKEN);
-    const expiry = localStorage.getItem(STORAGE_KEY_EXPIRY);
-    const hasAuthorized = localStorage.getItem(STORAGE_KEY_PERMANENT);
-
-    if (savedToken && expiry && Date.now() < parseInt(expiry, 10)) {
-      accessToken = savedToken;
+    function saveToken(token, expiresInSeconds = 3599) {
+      accessToken = token;
+      localStorage.setItem(STORAGE_KEY_TOKEN, token);
+      localStorage.setItem(STORAGE_KEY_EXPIRY, (Date.now() + expiresInSeconds * 1000).toString());
+      localStorage.setItem(STORAGE_KEY_PERMANENT, '1');
       setAuthorizedUI(true);
-    } else if (hasAuthorized) {
-      // Token 过期但此前已授权：尝试静默自动续期
-      attemptSilentTokenRefresh();
-    } else {
-      clearSavedToken();
     }
-  }
 
-  function attemptSilentTokenRefresh() {
-    if (tokenClient) {
-      tokenClient.requestAccessToken({ prompt: '' });
+    function clearSavedToken() {
+      accessToken = null;
+      localStorage.removeItem(STORAGE_KEY_TOKEN);
+      localStorage.removeItem(STORAGE_KEY_EXPIRY);
+      setAuthorizedUI(false);
     }
-  }
 
-  function saveToken(token, expiresInSeconds = 3599) {
-    accessToken = token;
-    const expiryTime = Date.now() + expiresInSeconds * 1000;
-    localStorage.setItem(STORAGE_KEY_TOKEN, token);
-    localStorage.setItem(STORAGE_KEY_EXPIRY, expiryTime.toString());
-    localStorage.setItem(STORAGE_KEY_PERMANENT, '1');
-    setAuthorizedUI(true);
-  }
-
-  function clearSavedToken() {
-    accessToken = null;
-    localStorage.removeItem(STORAGE_KEY_TOKEN);
-    localStorage.removeItem(STORAGE_KEY_EXPIRY);
-    setAuthorizedUI(false);
-  }
-
-  function setAuthorizedUI(isAuthorized) {
-    if (isAuthorized) {
-      authBadge.classList.add('authorized');
-      authStatusText.textContent = 'Google 账号已授权 (自动续期)';
-      authBtn.textContent = '切换账号';
-    } else {
-      authBadge.classList.remove('authorized');
-      authStatusText.textContent = '云端硬盘未授权';
-      authBtn.textContent = '登录授权';
+    function setAuthorizedUI(isAuthorized) {
+      if (isAuthorized) {
+        authBadge.classList.add('authorized');
+        authStatusText.textContent = '已授权';
+        authBtn.textContent = '切换';
+      } else {
+        authBadge.classList.remove('authorized');
+        authStatusText.textContent = '未授权';
+        authBtn.textContent = '授权';
+      }
     }
-  }
 
-  function initGoogleClient() {
-    if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
-      tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: GOOGLE_CLIENT_ID,
-        scope: DRIVE_SCOPE,
-        callback: async (tokenResponse) => {
-          if (tokenResponse && tokenResponse.access_token) {
-            saveToken(tokenResponse.access_token, tokenResponse.expires_in || 3599);
-            showStatus('Google 账号授权生效。', false);
-
-            if (parsedPayload) {
-              await pullDriveAttachments();
-            }
-          } else if (tokenResponse.error) {
-            if (tokenResponse.error !== 'immediate_failed') {
-              showStatus(`授权中断: ${tokenResponse.error}`, true);
+    function initGoogleClient() {
+      if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
+        tokenClient = google.accounts.oauth2.initTokenClient({
+          client_id: GOOGLE_CLIENT_ID,
+          scope: DRIVE_SCOPE,
+          callback: async (tokenResponse) => {
+            if (tokenResponse && tokenResponse.access_token) {
+              saveToken(tokenResponse.access_token, tokenResponse.expires_in || 3599);
+              if (parsedPayload) await pullDriveAttachments();
             }
           }
-        }
-      });
+        });
 
-      // 初始化后尝试静默连接
-      if (!accessToken && localStorage.getItem(STORAGE_KEY_PERMANENT)) {
-        attemptSilentTokenRefresh();
+        if (!accessToken && localStorage.getItem(STORAGE_KEY_PERMANENT)) {
+          attemptSilentTokenRefresh();
+        }
       }
     }
-  }
 
-  window.addEventListener('load', () => {
-    restoreSavedToken();
-    initGoogleClient();
-  });
+    window.addEventListener('load', () => {
+      restoreSavedToken();
+      initGoogleClient();
+    });
 
-  authBtn.addEventListener('click', () => {
-    if (!tokenClient) initGoogleClient();
-    if (tokenClient) {
-      tokenClient.requestAccessToken({ prompt: accessToken ? '' : 'consent' });
-    }
-  });
-
-  // 严格过滤支持的会话文件（无扩展名，或 .json / .txt）
-  function isTargetChatFile(fileName) {
-    if (!fileName) return false;
-    const lower = fileName.toLowerCase();
-    // 过滤掉明显的非文本或图片媒体
-    const blockedExts = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.pdf', '.zip', '.mp3', '.mp4'];
-    if (blockedExts.some(ext => lower.endsWith(ext))) return false;
-    // 包含 .json、.txt 或根本没有后缀的文件
-    return !fileName.includes('.') || lower.endsWith('.json') || lower.endsWith('.txt');
-  }
-
-  // 打开云盘会话选择器
-  openDrivePickerBtn.addEventListener('click', async () => {
-    if (!accessToken) {
+    authBtn.addEventListener('click', () => {
       if (!tokenClient) initGoogleClient();
-      tokenClient.requestAccessToken({ prompt: 'consent' });
-      return;
+      if (tokenClient) tokenClient.requestAccessToken({ prompt: accessToken ? '' : 'consent' });
+    });
+
+    // 核心代码高亮与复制功能挂载 (保证 100% 成功彩色高亮)
+    function enhanceRenderedView(container) {
+      container.querySelectorAll('pre code').forEach((block) => {
+        // 1. 调用 highlight.js 渲染彩色语法高亮
+        if (typeof hljs !== 'undefined' && typeof hljs.highlightElement === 'function') {
+          try {
+            hljs.highlightElement(block);
+          } catch (e) {}
+        }
+
+        // 2. 挂载右上角复制按钮
+        const pre = block.parentElement;
+        if (pre.querySelector('.code-copy-btn')) return;
+
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'code-copy-btn';
+        copyBtn.textContent = '复制';
+        copyBtn.onclick = async () => {
+          await copyText(block.innerText);
+          copyBtn.textContent = '已复制 ✓';
+          setTimeout(() => { copyBtn.textContent = '复制'; }, 1500);
+        };
+        pre.appendChild(copyBtn);
+      });
     }
-    openDriveModal();
-  });
 
-  modalCloseBtn.addEventListener('click', () => { driveModal.style.display = 'none'; });
-  driveModal.addEventListener('click', (e) => { if (e.target === driveModal) driveModal.style.display = 'none'; });
+    // 筛选对话文件 (.json, .txt, 无后缀)
+    function isTargetChatFile(fileName) {
+      if (!fileName) return false;
+      const lower = fileName.toLowerCase();
+      const blocked = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.pdf', '.zip', '.mp3', '.mp4'];
+      if (blocked.some(ext => lower.endsWith(ext))) return false;
+      return !fileName.includes('.') || lower.endsWith('.json') || lower.endsWith('.txt');
+    }
 
-  async function openDriveModal() {
-    driveModal.style.display = 'flex';
-    modalSearchInput.value = '';
-    driveNextPageToken = null;
-    allLoadedFiles = [];
-    driveModalList.innerHTML = '<div style="text-align: center; padding: 32px 0; color: var(--text-muted);">正在检索 Google AI Studio 目录及更早的历史会话...</div>';
+    // 打开云端硬盘选择器
+    heroOpenDriveBtn.addEventListener('click', () => {
+      if (!accessToken) {
+        if (!tokenClient) initGoogleClient();
+        tokenClient.requestAccessToken({ prompt: 'consent' });
+        return;
+      }
+      openDriveModal();
+    });
 
-    try {
-      if (!driveFolderId) {
-        const folderRes = await fetch("https://www.googleapis.com/drive/v3/files?q=name='Google AI Studio' and mimeType='application/vnd.google-apps.folder' and trashed=false", {
+    modalCloseBtn.addEventListener('click', () => { driveModal.style.display = 'none'; });
+    driveModal.addEventListener('click', (e) => { if (e.target === driveModal) driveModal.style.display = 'none'; });
+
+    async function openDriveModal() {
+      driveModal.style.display = 'flex';
+      modalSearchInput.value = '';
+      driveNextPageToken = null;
+      allLoadedFiles = [];
+      driveModalList.innerHTML = '<div style="text-align: center; padding: 32px 0; color: var(--text-muted);">正在检索 Google AI Studio 会话...</div>';
+
+      try {
+        if (!driveFolderId) {
+          const folderRes = await fetch("https://www.googleapis.com/drive/v3/files?q=name='Google AI Studio' and mimeType='application/vnd.google-apps.folder' and trashed=false", {
+            headers: { 'Authorization': `Bearer ${accessToken}` }
+          });
+          const folderData = await folderRes.json();
+          if (folderData.files && folderData.files.length > 0) {
+            driveFolderId = folderData.files[0].id;
+          }
+        }
+        await fetchDriveFilesPage();
+      } catch (err) {
+        driveModalList.innerHTML = `<div style="text-align: center; padding: 24px 0; color: var(--danger);">检索失败: ${err.message}</div>`;
+      }
+    }
+
+    async function fetchDriveFilesPage() {
+      let query = "trashed=false";
+      if (driveFolderId) {
+        query += ` and '${driveFolderId}' in parents`;
+      } else {
+        query += " and (mimeType='application/json' or name contains 'prompt')";
+      }
+
+      let url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&orderBy=modifiedTime desc&pageSize=100&fields=nextPageToken,files(id,name,modifiedTime,mimeType)`;
+      if (driveNextPageToken) url += `&pageToken=${driveNextPageToken}`;
+
+      const res = await fetch(url, { headers: { 'Authorization': `Bearer ${accessToken}` } });
+      const data = await res.json();
+
+      driveNextPageToken = data.nextPageToken || null;
+      modalLoadMoreBtn.style.display = driveNextPageToken ? 'inline-block' : 'none';
+
+      if (data.files && data.files.length > 0) {
+        allLoadedFiles = allLoadedFiles.concat(data.files.filter(f => isTargetChatFile(f.name)));
+      }
+
+      renderFileList(modalSearchInput.value.trim());
+    }
+
+    modalLoadMoreBtn.addEventListener('click', () => {
+      modalLoadMoreBtn.textContent = '加载中...';
+      fetchDriveFilesPage().then(() => { modalLoadMoreBtn.textContent = '加载更早的内容'; });
+    });
+
+    modalSearchInput.addEventListener('input', (e) => {
+      renderFileList(e.target.value.trim());
+    });
+
+    function renderFileList(keyword = '') {
+      const list = keyword
+        ? allLoadedFiles.filter(f => f.name.toLowerCase().includes(keyword.toLowerCase()))
+        : allLoadedFiles;
+
+      modalCounterText.textContent = `已筛选 ${list.length} 个会话文件`;
+
+      if (!list.length) {
+        driveModalList.innerHTML = '<div style="text-align: center; padding: 32px 0; color: var(--text-muted);">未找到符合条件的对话文件</div>';
+        return;
+      }
+
+      driveModalList.innerHTML = '';
+      list.forEach(file => {
+        const item = document.createElement('div');
+        item.className = 'drive-file-item';
+        const dateStr = new Date(file.modifiedTime).toLocaleString();
+        item.innerHTML = `
+          <div class="drive-file-title" title="${file.name}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0969da" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+            </svg>
+            <span style="overflow:hidden;text-overflow:ellipsis;">${file.name}</span>
+          </div>
+          <div class="drive-file-time">${dateStr}</div>
+        `;
+        item.onclick = () => loadFileFromDrive(file.id, file.name);
+        driveModalList.appendChild(item);
+      });
+    }
+
+    async function loadFileFromDrive(fileId, fileName) {
+      driveModal.style.display = 'none';
+      documentTitle = fileName.replace(/\.(json|txt|md)$/i, '') || 'chat_export';
+
+      try {
+        const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
           headers: { 'Authorization': `Bearer ${accessToken}` }
         });
-        const folderData = await folderRes.json();
-        if (folderData.files && folderData.files.length > 0) {
-          driveFolderId = folderData.files[0].id;
-        }
+        const text = await res.text();
+        await parseAndTransform(text);
+      } catch (err) {
+        alert(`读取会话失败: ${err.message}`);
       }
-      await fetchDriveFilesPage();
-    } catch (err) {
-      driveModalList.innerHTML = `<div style="text-align: center; padding: 24px 0; color: var(--danger);">检索失败: ${err.message}</div>`;
-    }
-  }
-
-  async function fetchDriveFilesPage() {
-    let query = "trashed=false";
-    if (driveFolderId) {
-      query += ` and '${driveFolderId}' in parents`;
-    } else {
-      query += " and (mimeType='application/json' or name contains 'prompt')";
     }
 
-    let url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&orderBy=modifiedTime desc&pageSize=100&fields=nextPageToken,files(id,name,modifiedTime,mimeType)`;
-    if (driveNextPageToken) {
-      url += `&pageToken=${driveNextPageToken}`;
-    }
-
-    const res = await fetch(url, { headers: { 'Authorization': `Bearer ${accessToken}` } });
-    const data = await res.json();
-
-    driveNextPageToken = data.nextPageToken || null;
-    modalLoadMoreBtn.style.display = driveNextPageToken ? 'inline-block' : 'none';
-
-    if (data.files && data.files.length > 0) {
-      const filtered = data.files.filter(f => isTargetChatFile(f.name));
-      allLoadedFiles = allLoadedFiles.concat(filtered);
-    }
-
-    renderFileList(modalSearchInput.value.trim());
-  }
-
-  modalLoadMoreBtn.addEventListener('click', () => {
-    modalLoadMoreBtn.textContent = '正在加载更早内容...';
-    fetchDriveFilesPage().then(() => {
-      modalLoadMoreBtn.textContent = '加载更早的内容';
+    // 本地文件选取与拖放
+    dropzoneArea.addEventListener('click', () => localFileInput.click());
+    dropzoneArea.addEventListener('dragover', (e) => { e.preventDefault(); dropzoneArea.classList.add('dragover'); });
+    dropzoneArea.addEventListener('dragleave', () => { dropzoneArea.classList.remove('dragover'); });
+    dropzoneArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzoneArea.classList.remove('dragover');
+      if (e.dataTransfer && e.dataTransfer.files.length) handleLocalFile(e.dataTransfer.files[0]);
     });
-  });
 
-  modalSearchInput.addEventListener('input', (e) => {
-    renderFileList(e.target.value.trim());
-  });
-
-  function renderFileList(keyword = '') {
-    const list = keyword
-      ? allLoadedFiles.filter(f => f.name.toLowerCase().includes(keyword.toLowerCase()))
-      : allLoadedFiles;
-
-    modalCounterText.textContent = `已筛选 ${list.length} 个会话文件`;
-
-    if (!list.length) {
-      driveModalList.innerHTML = '<div style="text-align: center; padding: 32px 0; color: var(--text-muted);">未找到符合条件的对话文件</div>';
-      return;
-    }
-
-    driveModalList.innerHTML = '';
-    list.forEach(file => {
-      const item = document.createElement('div');
-      item.className = 'drive-file-item';
-      const dateStr = new Date(file.modifiedTime).toLocaleString();
-      item.innerHTML = `
-        <div class="drive-file-title" title="${file.name}">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-            <polyline points="14 2 14 8 20 8"></polyline>
-          </svg>
-          <span style="overflow:hidden;text-overflow:ellipsis;">${file.name}</span>
-        </div>
-        <div class="drive-file-time">${dateStr}</div>
-      `;
-      item.onclick = () => loadFileFromDrive(file.id, file.name);
-      driveModalList.appendChild(item);
+    localFileInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files.length) handleLocalFile(e.target.files[0]);
     });
-  }
 
-  async function loadFileFromDrive(fileId, fileName) {
-    driveModal.style.display = 'none';
-    showStatus(`正在拉取对话: ${fileName}...`, 'warning');
-    documentTitle = fileName.replace(/\.(json|txt|md)$/i, '') || 'chat_export';
-
-    try {
-      const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
-        headers: { 'Authorization': `Bearer ${accessToken}` }
-      });
-      const text = await res.text();
-      await parseAndTransform(text, `云盘: ${fileName}`);
-    } catch (err) {
-      showStatus(`读取失败: ${err.message}`, true);
+    function handleLocalFile(file) {
+      documentTitle = file.name.replace(/\.(json|txt|md)$/i, '') || 'chat_export';
+      const reader = new FileReader();
+      reader.onload = async (e) => { await parseAndTransform(e.target.result); };
+      reader.readAsText(file);
     }
-  }
 
-  uploadZone.addEventListener('click', () => fileInput.click());
-  uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('dragover'); });
-  uploadZone.addEventListener('dragleave', () => { uploadZone.classList.remove('dragover'); });
-  uploadZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    uploadZone.classList.remove('dragover');
-    if (e.dataTransfer && e.dataTransfer.files.length) {
-      loadFromFile(e.dataTransfer.files[0]);
-    }
-  });
-
-  fileInput.addEventListener('change', (e) => {
-    if (e.target.files && e.target.files.length) {
-      loadFromFile(e.target.files[0]);
-    }
-  });
-
-  [optCardLayout, optCollapseThoughts, optShowTimestamp, optExtractSystemPrompt, optEmbedTextDocAsCode].forEach(checkbox => {
-    checkbox.addEventListener('change', () => {
-      if (parsedPayload) transformSessionToMarkdown(parsedPayload);
-    });
-  });
-
-  fetchDriveBtn.addEventListener('click', () => { pullDriveAttachments(); });
-
-  function loadFromFile(file) {
-    documentTitle = file.name.replace(/\.(json|txt|md)$/i, '') || 'chat_export';
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      await parseAndTransform(e.target.result, file.name);
-    };
-    reader.readAsText(file);
-  }
-
-  pasteJsonTrigger.addEventListener('click', async () => {
-    try {
-      let text = '';
-      if (navigator.clipboard && window.isSecureContext) {
-        text = await navigator.clipboard.readText();
-      } else {
-        const inputPrompt = prompt('请粘贴 Google AI Studio 导出的 JSON 文本：');
-        if (inputPrompt) text = inputPrompt;
-      }
+    pasteTextInput.addEventListener('paste', async (e) => {
+      const text = (e.clipboardData || window.clipboardData).getData('text');
       if (text && text.trim()) {
         documentTitle = 'pasted_chat';
-        await parseAndTransform(text.trim(), '剪贴板内容');
+        await parseAndTransform(text.trim());
+        pasteTextInput.value = '';
       }
-    } catch (err) {
-      showStatus('读取剪贴板失败，请手动选取文件。', true);
-    }
-  });
+    });
 
-  async function parseAndTransform(rawText, sourceDesc) {
-    try {
-      parsedPayload = JSON.parse(rawText.trim());
-      const success = transformSessionToMarkdown(parsedPayload);
-      if (success) {
-        showStatus(`已解析：${sourceDesc}`, false);
+    // 配置变动自动刷新排版
+    [optCardLayout, optCollapseThoughts, optShowTimestamp, optExtractSystemPrompt, optEmbedTextDocAsCode].forEach(checkbox => {
+      checkbox.addEventListener('change', () => {
+        if (parsedPayload) renderMarkdownContent();
+      });
+    });
+
+    async function parseAndTransform(rawText) {
+      try {
+        parsedPayload = JSON.parse(rawText.trim());
+        renderMarkdownContent();
+
+        // 切换到沉浸式阅读视图
+        workspaceView.style.display = 'none';
+        readerView.style.display = 'block';
+        readerActions.style.display = 'flex';
+        headerTitle.textContent = documentTitle;
+        window.scrollTo({ top: 0, behavior: 'instant' });
+
+        // 自动拉取云端附件
         if (optAutoDownloadDrive.checked && countDriveAttachments(parsedPayload) > 0) {
           if (accessToken) {
             await pullDriveAttachments();
-          } else {
-            showStatus('检测到云端附件，可点击右上角登录自动同步图片与代码文档。', 'warning');
-            fetchDriveBtn.style.display = 'inline-flex';
           }
         }
+      } catch (err) {
+        alert(`解析失败，请确保格式正确: ${err.message}`);
       }
-    } catch (err) {
-      showStatus(`JSON 解析失败: ${err.message}`, true);
     }
-  }
 
-  function showStatus(text, statusType) {
-    statusMessage.textContent = text;
-    if (statusType === true) statusMessage.className = 'status-msg error';
-    else if (statusType === 'warning') statusMessage.className = 'status-msg warning';
-    else statusMessage.className = 'status-msg success';
-  }
+    function countDriveAttachments(json) {
+      const rawChunks = extractRawChunks(json);
+      let count = 0;
+      rawChunks.forEach(chunk => {
+        if (chunk.driveImage && chunk.driveImage.id) count++;
+        if (chunk.driveDocument && chunk.driveDocument.id) count++;
+      });
+      return count;
+    }
 
-  function countDriveAttachments(json) {
-    const rawChunks = extractRawChunks(json);
-    let count = 0;
-    rawChunks.forEach(chunk => {
-      if (chunk.driveImage && chunk.driveImage.id) count++;
-      if (chunk.driveDocument && chunk.driveDocument.id) count++;
-    });
-    return count;
-  }
+    function isTextBasedFile(mimeType, fileName = '') {
+      if (mimeType && (mimeType.startsWith('text/') || mimeType.includes('json') || mimeType.includes('javascript') || mimeType.includes('xml'))) return true;
+      const ext = fileName.split('.').pop().toLowerCase();
+      const textExts = ['txt', 'py', 'js', 'ts', 'jsx', 'tsx', 'json', 'md', 'html', 'css', 'c', 'cpp', 'java', 'go', 'rs', 'sh', 'yaml', 'yml', 'csv'];
+      return textExts.includes(ext);
+    }
 
-  function isTextBasedFile(mimeType, fileName = '') {
-    if (mimeType && (mimeType.startsWith('text/') || mimeType.includes('json') || mimeType.includes('javascript') || mimeType.includes('xml'))) return true;
-    const ext = fileName.split('.').pop().toLowerCase();
-    const textExts = ['txt', 'py', 'js', 'ts', 'jsx', 'tsx', 'json', 'md', 'html', 'css', 'c', 'cpp', 'java', 'go', 'rs', 'sh', 'yaml', 'yml', 'csv'];
-    return textExts.includes(ext);
-  }
+    function getCodeLanguage(fileName = '') {
+      const ext = fileName.split('.').pop().toLowerCase();
+      const map = {
+        'py': 'python', 'js': 'javascript', 'ts': 'typescript', 'json': 'json',
+        'html': 'html', 'css': 'css', 'sh': 'bash', 'cpp': 'cpp', 'c': 'c',
+        'java': 'java', 'go': 'go', 'rs': 'rust', 'md': 'markdown', 'sql': 'sql'
+      };
+      return map[ext] || '';
+    }
 
-  // 映射代码语言标识以获得最佳语法高亮
-  function getCodeLanguage(fileName = '') {
-    const ext = fileName.split('.').pop().toLowerCase();
-    const map = {
-      'py': 'python', 'js': 'javascript', 'ts': 'typescript', 'json': 'json',
-      'html': 'html', 'css': 'css', 'sh': 'bash', 'cpp': 'cpp', 'c': 'c',
-      'java': 'java', 'go': 'go', 'rs': 'rust', 'md': 'markdown', 'sql': 'sql'
-    };
-    return map[ext] || ''; // 若为 txt 或无扩展名，留空让 highlight.js 自动推测语法着色
-  }
+    async function fetchDriveMedia(fileId) {
+      if (driveAttachmentCache.has(fileId)) return driveAttachmentCache.get(fileId);
 
-  async function fetchDriveMedia(fileId) {
-    if (driveAttachmentCache.has(fileId)) return driveAttachmentCache.get(fileId);
-
-    try {
-      let mimeType = 'application/octet-stream';
-      let fileName = 'file';
       try {
-        const metaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=name,mimeType`, {
+        let mimeType = 'application/octet-stream';
+        let fileName = 'file';
+        try {
+          const metaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=name,mimeType`, {
+            headers: { 'Authorization': `Bearer ${accessToken}` }
+          });
+          if (metaRes.ok) {
+            const metaJson = await metaRes.json();
+            if (metaJson.mimeType) mimeType = metaJson.mimeType;
+            if (metaJson.name) fileName = metaJson.name;
+          }
+        } catch (e) {}
+
+        const mediaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
           headers: { 'Authorization': `Bearer ${accessToken}` }
         });
-        if (metaRes.ok) {
-          const metaJson = await metaRes.json();
-          if (metaJson.mimeType) mimeType = metaJson.mimeType;
-          if (metaJson.name) fileName = metaJson.name;
-        }
-      } catch (e) {}
+        if (!mediaRes.ok) throw new Error(`HTTP ${mediaRes.status}`);
 
-      const mediaRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
-        headers: { 'Authorization': `Bearer ${accessToken}` }
+        const blob = await mediaRes.blob();
+        const isText = isTextBasedFile(mimeType, fileName);
+
+        let textContent = null;
+        let dataUrl = null;
+
+        if (isText) {
+          textContent = await blob.text();
+        } else {
+          dataUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+        }
+
+        const result = { mimeType, dataUrl, textContent, fileName, isText };
+        driveAttachmentCache.set(fileId, result);
+        return result;
+      } catch (err) {
+        return null;
+      }
+    }
+
+    async function pullDriveAttachments() {
+      if (!accessToken) return;
+
+      const rawChunks = extractRawChunks(parsedPayload);
+      const fileIds = new Set();
+      rawChunks.forEach(chunk => {
+        if (chunk.driveImage && chunk.driveImage.id) fileIds.add(chunk.driveImage.id);
+        if (chunk.driveDocument && chunk.driveDocument.id) fileIds.add(chunk.driveDocument.id);
       });
-      if (!mediaRes.ok) throw new Error(`HTTP ${mediaRes.status}`);
 
-      const blob = await mediaRes.blob();
-      const isText = isTextBasedFile(mimeType, fileName);
+      if (fileIds.size === 0) return;
 
-      let textContent = null;
-      let dataUrl = null;
-
-      if (isText) {
-        textContent = await blob.text();
-      } else {
-        dataUrl = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        });
+      for (const id of fileIds) {
+        await fetchDriveMedia(id);
       }
-
-      const result = { mimeType, dataUrl, textContent, fileName, isText };
-      driveAttachmentCache.set(fileId, result);
-      return result;
-    } catch (err) {
-      console.warn(`同步附件 ${fileId} 失败:`, err);
-      return null;
-    }
-  }
-
-  async function pullDriveAttachments() {
-    if (!accessToken) {
-      authBtn.click();
-      return;
+      renderMarkdownContent();
     }
 
-    const rawChunks = extractRawChunks(parsedPayload);
-    const fileIds = new Set();
-    rawChunks.forEach(chunk => {
-      if (chunk.driveImage && chunk.driveImage.id) fileIds.add(chunk.driveImage.id);
-      if (chunk.driveDocument && chunk.driveDocument.id) fileIds.add(chunk.driveDocument.id);
-    });
-
-    if (fileIds.size === 0) return;
-
-    const total = fileIds.size;
-    let completed = 0;
-    showStatus(`正在下载云端附件 (0/${total})...`, 'warning');
-
-    for (const id of fileIds) {
-      await fetchDriveMedia(id);
-      completed++;
-      showStatus(`正在下载云端附件 (${completed}/${total})...`, 'warning');
+    function extractRawChunks(data) {
+      if (!data) return [];
+      if (Array.isArray(data)) return data;
+      if (data.chunkedPrompt && Array.isArray(data.chunkedPrompt.chunks)) return data.chunkedPrompt.chunks;
+      if (data.prompt && Array.isArray(data.prompt.chunks)) return data.prompt.chunks;
+      if (Array.isArray(data.contents)) return data.contents;
+      if (data.prompt && Array.isArray(data.prompt.contents)) return data.prompt.contents;
+      return [];
     }
 
-    showStatus(`附件同步完成，已处理 ${completed} 个文件。`, false);
-    fetchDriveBtn.style.display = 'none';
+    function extractSystemInstruction(data) {
+      const raw = data.systemInstruction || 
+        (data.chunkedPrompt && data.chunkedPrompt.systemInstruction) ||
+        (data.prompt && data.prompt.systemInstruction);
 
-    transformSessionToMarkdown(parsedPayload);
-  }
-
-  function extractRawChunks(data) {
-    if (!data) return [];
-    if (Array.isArray(data)) return data;
-    if (data.chunkedPrompt && Array.isArray(data.chunkedPrompt.chunks)) return data.chunkedPrompt.chunks;
-    if (data.prompt && Array.isArray(data.prompt.chunks)) return data.prompt.chunks;
-    if (Array.isArray(data.contents)) return data.contents;
-    if (data.prompt && Array.isArray(data.prompt.contents)) return data.prompt.contents;
-    return [];
-  }
-
-  function extractSystemInstruction(data) {
-    const rawInstruction = data.systemInstruction || 
-      (data.chunkedPrompt && data.chunkedPrompt.systemInstruction) ||
-      (data.prompt && data.prompt.systemInstruction);
-
-    if (!rawInstruction) return '';
-    if (typeof rawInstruction === 'string') return rawInstruction.trim();
-    if (Array.isArray(rawInstruction.parts)) {
-      return rawInstruction.parts.map(p => p.text || '').join('\n').trim();
-    }
-    return '';
-  }
-
-  function mergeConsecutiveMessages(chunks) {
-    const merged = [];
-
-    chunks.forEach(chunk => {
-      let role = 'assistant';
-      if (chunk.role === 'user') role = 'user';
-      else if (chunk.role === 'system') role = 'system';
-      else if (chunk.role === 'model' || chunk.role === 'assistant') role = 'assistant';
-
-      let textContent = '';
-      let thoughtContent = '';
-      const attachments = [];
-
-      if (Array.isArray(chunk.parts) && chunk.parts.length > 0) {
-        chunk.parts.forEach(part => {
-          if (part.thought && part.text) {
-            thoughtContent += part.text;
-          } else if (part.text) {
-            textContent += part.text;
-          }
-
-          const inline = part.inlineData || part.inline_data;
-          if (inline && inline.mimeType) {
-            attachments.push({ type: 'inline', mimeType: inline.mimeType, data: inline.data });
-          }
-        });
-      } else if (typeof chunk.text === 'string') {
-        textContent = chunk.text;
-      }
-
-      textContent = textContent.replace(/thoughtSignature:\s*"[A-Za-z0-9+/=]+"/g, '').trim();
-
-      if (chunk.driveImage && chunk.driveImage.id) attachments.push({ type: 'driveImage', id: chunk.driveImage.id });
-      if (chunk.driveDocument && chunk.driveDocument.id) attachments.push({ type: 'driveDoc', id: chunk.driveDocument.id });
-
-      const last = merged[merged.length - 1];
-
-      if (last && last.role === role) {
-        if (textContent) last.texts.push(textContent);
-        if (thoughtContent) last.thoughts.push(thoughtContent);
-        if (attachments.length) last.attachments.push(...attachments);
-      } else {
-        merged.push({
-          role,
-          createTime: chunk.createTime || chunk.timestamp || null,
-          texts: textContent ? [textContent] : [],
-          thoughts: thoughtContent ? [thoughtContent] : [],
-          attachments
-        });
-      }
-    });
-
-    return merged;
-  }
-
-  function transformSessionToMarkdown(json) {
-    const rawChunks = extractRawChunks(json);
-    if (!rawChunks.length) {
-      showStatus('未在该数据中检测到有效的对话切片。', true);
-      return false;
+      if (!raw) return '';
+      if (typeof raw === 'string') return raw.trim();
+      if (Array.isArray(raw.parts)) return raw.parts.map(p => p.text || '').join('\n').trim();
+      return '';
     }
 
-    const messages = mergeConsecutiveMessages(rawChunks);
-    const useCardLayout = optCardLayout.checked;
-    const collapseThoughts = optCollapseThoughts.checked;
-    const showTimestamp = optShowTimestamp.checked;
-    const extractSysPrompt = optExtractSystemPrompt.checked;
-    const embedTextAsCode = optEmbedTextDocAsCode.checked;
+    function mergeConsecutiveMessages(chunks) {
+      const merged = [];
 
-    let md = `# 对话记录: ${documentTitle}\n\n`;
+      chunks.forEach(chunk => {
+        let role = 'assistant';
+        if (chunk.role === 'user') role = 'user';
+        else if (chunk.role === 'system') role = 'system';
+        else if (chunk.role === 'model' || chunk.role === 'assistant') role = 'assistant';
 
-    const model = json.runSettings?.model || json.model;
-    if (model) md += `> **模型**: \`${model}\`  \n`;
-    md += `> **对话轮次**: ${messages.length} 轮  \n\n`;
+        let textContent = '';
+        let thoughtContent = '';
+        const attachments = [];
 
-    if (extractSysPrompt) {
-      const systemInstruction = extractSystemInstruction(json);
-      if (systemInstruction) {
-        md += `<details>\n<summary><b>系统提示词 (System Instruction)</b></summary>\n\n`;
-        md += `> ` + systemInstruction.replace(/\n/g, '\n> ') + `\n\n`;
-        md += `</details>\n\n`;
-      }
-    }
-
-    md += `---\n\n`;
-
-    messages.forEach(msg => {
-      let roleTitle = 'AI';
-      if (msg.role === 'user') roleTitle = 'User';
-      else if (msg.role === 'system') roleTitle = 'System';
-      else roleTitle = 'Assistant';
-
-      let timeBadge = '';
-      if (showTimestamp && msg.createTime) {
-        const timeStr = new Date(msg.createTime).toLocaleString();
-        timeBadge = ` <span style="font-size:12px;color:#64748b;font-weight:normal;">(${timeStr})</span>`;
-      }
-
-      let topAttachmentsMd = '';
-      let nonTextAttachmentsMd = '';
-
-      if (msg.attachments.length > 0) {
-        msg.attachments.forEach(att => {
-          if (att.type === 'driveImage' || att.type === 'driveDoc') {
-            if (driveAttachmentCache.has(att.id)) {
-              const cached = driveAttachmentCache.get(att.id);
-
-              if (cached.isText && embedTextAsCode) {
-                const lang = getCodeLanguage(cached.fileName);
-                topAttachmentsMd += `**📄 上传文档 (${cached.fileName || 'document'})**:\n\n\`\`\`${lang}\n${cached.textContent}\n\`\`\`\n\n`;
-              } else if (cached.mimeType && cached.mimeType.startsWith('image/')) {
-                nonTextAttachmentsMd += `![${cached.fileName || '云端图片'}](${cached.dataUrl})\n\n`;
-              } else if (cached.mimeType && cached.mimeType.startsWith('audio/')) {
-                nonTextAttachmentsMd += `<audio controls src="${cached.dataUrl}"></audio>\n\n`;
-              } else {
-                nonTextAttachmentsMd += `<span style="display:inline-block;padding:2px 8px;background:#e2e8f0;border-radius:4px;font-size:12px;margin-bottom:6px;">📄 ${cached.fileName || '文档附件'}</span>\n\n`;
-              }
-            } else {
-              const isImg = att.type === 'driveImage';
-              const label = isImg ? '图片附件' : '文档附件';
-              nonTextAttachmentsMd += `<a href="https://drive.google.com/file/d/${att.id}/view" target="_blank" style="text-decoration:none;display:inline-block;margin-bottom:6px;">\n` +
-                `  <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;font-size:12px;color:#2563eb;">\n` +
-                `    📁 ${label} (ID: <code>${att.id.slice(0, 8)}...</code> ↗)\n` +
-                `  </span>\n` +
-                `</a>\n\n`;
+        if (Array.isArray(chunk.parts) && chunk.parts.length > 0) {
+          chunk.parts.forEach(part => {
+            if (part.thought && part.text) {
+              thoughtContent += part.text;
+            } else if (part.text) {
+              textContent += part.text;
             }
-          } else if (att.type === 'inline') {
-            if (att.mimeType.startsWith('image/')) {
-              nonTextAttachmentsMd += `![附件图片](data:${att.mimeType};base64,${att.data})\n\n`;
-            } else if (att.mimeType.startsWith('audio/')) {
-              nonTextAttachmentsMd += `<audio controls src="data:${att.mimeType};base64,${att.data}"></audio>\n\n`;
-            } else {
-              nonTextAttachmentsMd += `<span style="display:inline-block;padding:2px 8px;background:#e2e8f0;border-radius:4px;font-size:12px;margin-bottom:6px;">文件附件 (类型: <code>${att.mimeType}</code>)</span>\n\n`;
+            const inline = part.inlineData || part.inline_data;
+            if (inline && inline.mimeType) {
+              attachments.push({ type: 'inline', mimeType: inline.mimeType, data: inline.data });
             }
-          }
-        });
-      }
+          });
+        } else if (typeof chunk.text === 'string') {
+          textContent = chunk.text;
+        }
 
-      let thoughtSection = '';
-      if (collapseThoughts && msg.thoughts.length > 0) {
-        const combinedThoughts = msg.thoughts.join('\n\n').trim();
-        if (combinedThoughts) {
-          thoughtSection = `<details style="margin-bottom:12px;padding:8px 12px;background:#f8fafc;border-radius:6px;border:1px dashed #cbd5e1;">\n` +
-            `<summary style="cursor:pointer;color:#64748b;font-size:13px;"><b>思考过程 (Thinking Process)</b></summary>\n\n> ` +
-            combinedThoughts.replace(/\n/g, '\n> ') +
-            `\n\n</details>\n\n`;
+        textContent = textContent.replace(/thoughtSignature:\s*"[A-Za-z0-9+/=]+"/g, '').trim();
+
+        if (chunk.driveImage && chunk.driveImage.id) attachments.push({ type: 'driveImage', id: chunk.driveImage.id });
+        if (chunk.driveDocument && chunk.driveDocument.id) attachments.push({ type: 'driveDoc', id: chunk.driveDocument.id });
+
+        const last = merged[merged.length - 1];
+
+        if (last && last.role === role) {
+          if (textContent) last.texts.push(textContent);
+          if (thoughtContent) last.thoughts.push(thoughtContent);
+          if (attachments.length) last.attachments.push(...attachments);
+        } else {
+          merged.push({
+            role,
+            createTime: chunk.createTime || chunk.timestamp || null,
+            texts: textContent ? [textContent] : [],
+            thoughts: thoughtContent ? [thoughtContent] : [],
+            attachments
+          });
+        }
+      });
+
+      return merged;
+    }
+
+    // 生成 Markdown 并渲染至视图
+    function renderMarkdownContent() {
+      const rawChunks = extractRawChunks(parsedPayload);
+      if (!rawChunks.length) return;
+
+      const messages = mergeConsecutiveMessages(rawChunks);
+      const useCardLayout = optCardLayout.checked;
+      const collapseThoughts = optCollapseThoughts.checked;
+      const showTimestamp = optShowTimestamp.checked;
+      const extractSysPrompt = optExtractSystemPrompt.checked;
+      const embedTextAsCode = optEmbedTextDocAsCode.checked;
+
+      let md = `# 对话记录: ${documentTitle}\n\n`;
+
+      const model = parsedPayload.runSettings?.model || parsedPayload.model;
+      if (model) md += `> **模型**: \`${model}\`  \n`;
+      md += `> **对话轮次**: ${messages.length} 轮  \n\n`;
+
+      if (extractSysPrompt) {
+        const sys = extractSystemInstruction(parsedPayload);
+        if (sys) {
+          md += `<details>\n<summary><b>系统提示词 (System Instruction)</b></summary>\n\n`;
+          md += `> ` + sys.replace(/\n/g, '\n> ') + `\n\n`;
+          md += `</details>\n\n`;
         }
       }
 
-      const bodySection = msg.texts.join('\n\n').trim();
+      md += `---\n\n`;
 
-      if (useCardLayout) {
-        const isUser = msg.role === 'user';
-        const cardStyle = isUser
-          ? 'background:#f0f7ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px 20px;margin:14px 0 14px 4%;'
-          : 'background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;padding:16px 20px;margin:14px 4% 14px 0;box-shadow:0 1px 2px rgba(0,0,0,0.03);';
+      messages.forEach(msg => {
+        let roleTitle = 'AI';
+        if (msg.role === 'user') roleTitle = 'User';
+        else if (msg.role === 'system') roleTitle = 'System';
+        else roleTitle = 'Assistant';
 
-        md += `<div style="${cardStyle}">\n\n`;
-        md += `<div style="margin-bottom:8px;font-size:14px;"><b>${roleTitle}</b>${timeBadge}</div>\n\n`;
-        if (topAttachmentsMd) md += `${topAttachmentsMd}\n\n`;
-        if (nonTextAttachmentsMd) md += `${nonTextAttachmentsMd}\n\n`;
-        if (thoughtSection) md += `${thoughtSection}\n\n`;
-        if (bodySection) md += `${bodySection}\n\n`;
-        md += `</div>\n\n`;
-      } else {
-        md += `### ${roleTitle}${timeBadge}\n\n`;
-        if (topAttachmentsMd) md += `${topAttachmentsMd}\n\n`;
-        if (nonTextAttachmentsMd) md += `${nonTextAttachmentsMd}\n\n`;
-        if (thoughtSection) md += `${thoughtSection}\n\n`;
-        if (bodySection) md += `${bodySection}\n\n`;
-        md += `---\n\n`;
+        let timeBadge = '';
+        if (showTimestamp && msg.createTime) {
+          const timeStr = new Date(msg.createTime).toLocaleString();
+          timeBadge = ` <span style="font-size:12px;color:#64748b;font-weight:normal;">(${timeStr})</span>`;
+        }
+
+        let topAttachmentsMd = '';
+        let nonTextAttachmentsMd = '';
+
+        if (msg.attachments.length > 0) {
+          msg.attachments.forEach(att => {
+            if (att.type === 'driveImage' || att.type === 'driveDoc') {
+              if (driveAttachmentCache.has(att.id)) {
+                const cached = driveAttachmentCache.get(att.id);
+
+                if (cached.isText && embedTextAsCode) {
+                  const lang = getCodeLanguage(cached.fileName);
+                  topAttachmentsMd += `**📄 上传文档 (${cached.fileName || 'document'})**:\n\n\`\`\`${lang}\n${cached.textContent}\n\`\`\`\n\n`;
+                } else if (cached.mimeType && cached.mimeType.startsWith('image/')) {
+                  nonTextAttachmentsMd += `![${cached.fileName || '云端图片'}](${cached.dataUrl})\n\n`;
+                } else if (cached.mimeType && cached.mimeType.startsWith('audio/')) {
+                  nonTextAttachmentsMd += `<audio controls src="${cached.dataUrl}"></audio>\n\n`;
+                } else {
+                  nonTextAttachmentsMd += `<span style="display:inline-block;padding:2px 8px;background:#e2e8f0;border-radius:4px;font-size:12px;margin-bottom:6px;">📄 ${cached.fileName || '文档附件'}</span>\n\n`;
+                }
+              } else {
+                const isImg = att.type === 'driveImage';
+                const label = isImg ? '图片附件' : '文档附件';
+                nonTextAttachmentsMd += `<a href="https://drive.google.com/file/d/${att.id}/view" target="_blank" style="text-decoration:none;display:inline-block;margin-bottom:6px;">\n` +
+                  `  <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;font-size:12px;color:#0969da;">\n` +
+                  `    📁 ${label} (ID: <code>${att.id.slice(0, 8)}...</code> ↗)\n` +
+                  `  </span>\n` +
+                  `</a>\n\n`;
+              }
+            } else if (att.type === 'inline') {
+              if (att.mimeType.startsWith('image/')) {
+                nonTextAttachmentsMd += `![附件图片](data:${att.mimeType};base64,${att.data})\n\n`;
+              } else if (att.mimeType.startsWith('audio/')) {
+                nonTextAttachmentsMd += `<audio controls src="data:${att.mimeType};base64,${att.data}"></audio>\n\n`;
+              } else {
+                nonTextAttachmentsMd += `<span style="display:inline-block;padding:2px 8px;background:#e2e8f0;border-radius:4px;font-size:12px;margin-bottom:6px;">文件附件 (类型: <code>${att.mimeType}</code>)</span>\n\n`;
+              }
+            }
+          });
+        }
+
+        let thoughtSection = '';
+        if (collapseThoughts && msg.thoughts.length > 0) {
+          const combinedThoughts = msg.thoughts.join('\n\n').trim();
+          if (combinedThoughts) {
+            thoughtSection = `<details style="margin-bottom:12px;padding:8px 12px;background:#f8fafc;border-radius:6px;border:1px dashed #cbd5e1;">\n` +
+              `<summary style="cursor:pointer;color:#64748b;font-size:13px;"><b>思考过程 (Thinking Process)</b></summary>\n\n> ` +
+              combinedThoughts.replace(/\n/g, '\n> ') +
+              `\n\n</details>\n\n`;
+          }
+        }
+
+        const bodySection = msg.texts.join('\n\n').trim();
+
+        if (useCardLayout) {
+          const isUser = msg.role === 'user';
+          const cardStyle = isUser
+            ? 'background:#f0f7ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px 20px;margin:14px 0 14px 4%;'
+            : 'background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;padding:16px 20px;margin:14px 4% 14px 0;box-shadow:0 1px 2px rgba(0,0,0,0.03);';
+
+          md += `<div style="${cardStyle}">\n\n`;
+          md += `<div style="margin-bottom:8px;font-size:14px;"><b>${roleTitle}</b>${timeBadge}</div>\n\n`;
+          if (topAttachmentsMd) md += `${topAttachmentsMd}\n\n`;
+          if (nonTextAttachmentsMd) md += `${nonTextAttachmentsMd}\n\n`;
+          if (thoughtSection) md += `${thoughtSection}\n\n`;
+          if (bodySection) md += `${bodySection}\n\n`;
+          md += `</div>\n\n`;
+        } else {
+          md += `### ${roleTitle}${timeBadge}\n\n`;
+          if (topAttachmentsMd) md += `${topAttachmentsMd}\n\n`;
+          if (nonTextAttachmentsMd) md += `${nonTextAttachmentsMd}\n\n`;
+          if (thoughtSection) md += `${thoughtSection}\n\n`;
+          if (bodySection) md += `${bodySection}\n\n`;
+          md += `---\n\n`;
+        }
+      });
+
+      currentMarkdown = md;
+
+      // 1. 更新 Markdown 源码框
+      rawSourceContainer.value = currentMarkdown;
+
+      // 2. 渲染 HTML 并执行彩色代码高亮与复制功能挂载
+      const rawHtml = marked.parse(currentMarkdown);
+      const safeHtml = DOMPurify.sanitize(rawHtml);
+      renderedContainer.innerHTML = safeHtml;
+      enhanceRenderedView(renderedContainer);
+    }
+
+    // 复制与下载交互
+    async function copyText(text) {
+      if (navigator.clipboard && window.isSecureContext) {
+        try {
+          await navigator.clipboard.writeText(text);
+          return true;
+        } catch (err) {}
+      }
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.top = '-9999px';
+      document.body.appendChild(textarea);
+      textarea.select();
+      let success = false;
+      try { success = document.execCommand('copy'); } catch (err) {}
+      document.body.removeChild(textarea);
+      return success;
+    }
+
+    copyMarkdownBtn.addEventListener('click', async () => {
+      if (!currentMarkdown) return;
+      const success = await copyText(currentMarkdown);
+      if (success) {
+        copyMarkdownBtn.textContent = '已复制 ✓';
+        setTimeout(() => { copyMarkdownBtn.innerHTML = `
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg> 复制`;
+        }, 1500);
       }
     });
 
-    currentMarkdown = md;
-    outputArea.value = currentMarkdown;
+    downloadMarkdownBtn.addEventListener('click', () => {
+      if (!currentMarkdown) return;
+      const blob = new Blob([currentMarkdown], { type: 'text/markdown;charset=utf-8' });
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `${documentTitle}.md`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    });
 
-    // 同步生成实时效果预览（带语法高亮与卡片排版）
-    renderedPreviewArea.innerHTML = marked.parse(currentMarkdown);
-
-    downloadBtn.disabled = false;
-    copyBtn.disabled = false;
-    return true;
-  }
-
-  async function copyText(text) {
-    if (navigator.clipboard && window.isSecureContext) {
-      try {
-        await navigator.clipboard.writeText(text);
-        return true;
-      } catch (err) {}
-    }
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    textarea.style.position = 'fixed';
-    textarea.style.top = '-9999px';
-    document.body.appendChild(textarea);
-    textarea.select();
-    let success = false;
-    try { success = document.execCommand('copy'); } catch (err) {}
-    document.body.removeChild(textarea);
-    return success;
-  }
-
-  downloadBtn.addEventListener('click', () => {
-    if (!currentMarkdown) return;
-    const blob = new Blob([currentMarkdown], { type: 'text/markdown;charset=utf-8' });
-    const blobUrl = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = blobUrl;
-    link.download = `${documentTitle}.md`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(blobUrl);
-  });
-
-  copyBtn.addEventListener('click', async () => {
-    if (!currentMarkdown) return;
-    const originalText = copyBtn.innerHTML;
-    const success = await copyText(currentMarkdown);
-    if (success) {
-      copyBtn.textContent = '已复制到剪贴板';
-      setTimeout(() => { copyBtn.innerHTML = originalText; }, 1500);
-    } else {
-      showStatus('复制失败，请切换至源码视图全选复制。', true);
-    }
-  });
-</script>
-
+    // 回到顶部交互
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 300) {
+        backToTopBtn.classList.add('visible');
+      } else {
+        backToTopBtn.classList.remove('visible');
+      }
+    });
+    backToTopBtn.addEventListener('click', () => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  </script>
 </body>
 </html>
