@@ -8,27 +8,30 @@
   <!-- Google 身份认证客户端库 -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 
-  <!-- GitHub Markdown 官方样式与代码高亮 -->
+  <!-- Markdown 渲染与代码高亮样式 -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css@5.5.1/github-markdown.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css">
 
+  <!-- 第三方依赖库 -->
   <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
 
   <style>
     :root {
-      --bg: #f6f8fa;
-      --card-bg: #ffffff;
-      --primary: #0969da;
-      --primary-hover: #085cc1;
-      --primary-light: #eff6ff;
-      --border: #d0d7de;
-      --text: #1f2328;
+      --bg-canvas: #f6f8fa;
+      --bg-surface: #ffffff;
+      --bg-subtle: #f1f5f9;
+      --border-default: #d0d7de;
+      --border-muted: #e2e8f0;
+      --text-main: #1f2328;
       --text-muted: #57606a;
+      --accent: #0969da;
+      --accent-hover: #085cc1;
+      --accent-soft: #eff6ff;
       --success: #1a7f37;
       --danger: #cf222e;
-      --header-height: 52px;
+      --header-height: 54px;
     }
 
     * { box-sizing: border-box; }
@@ -37,14 +40,14 @@
       margin: 0;
       padding: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      background-color: var(--bg);
-      color: var(--text);
+      background-color: var(--bg-canvas);
+      color: var(--text-main);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
     }
 
-    /* 顶部吸顶工具栏 */
+    /* 顶部导航与操作栏 */
     header {
       position: sticky;
       top: 0;
@@ -52,8 +55,8 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      background-color: var(--card-bg);
-      border-bottom: 1px solid var(--border);
+      background-color: var(--bg-surface);
+      border-bottom: 1px solid var(--border-default);
       padding: 0 20px;
       height: var(--header-height);
     }
@@ -61,7 +64,7 @@
     .brand {
       font-weight: 600;
       font-size: 0.95rem;
-      color: var(--text);
+      color: var(--text-main);
       display: flex;
       align-items: center;
       gap: 8px;
@@ -74,13 +77,13 @@
       gap: 10px;
     }
 
-    /* 模式切换胶囊按钮 */
+    /* 视图切换胶囊 */
     .view-switch {
       display: inline-flex;
-      background: #f1f5f9;
+      background: var(--bg-subtle);
       padding: 2px;
       border-radius: 6px;
-      border: 1px solid var(--border);
+      border: 1px solid var(--border-default);
     }
 
     .view-switch-btn {
@@ -97,16 +100,16 @@
 
     .view-switch-btn.active {
       background: #ffffff;
-      color: var(--primary);
-      box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+      color: var(--accent);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
     }
 
-    /* 按钮通用规范 */
+    /* 基础按钮体系 */
     .btn {
       padding: 6px 12px;
-      border: 1px solid var(--border);
-      background-color: var(--card-bg);
-      color: var(--text);
+      border: 1px solid var(--border-default);
+      background-color: var(--bg-surface);
+      color: var(--text-main);
       border-radius: 6px;
       cursor: pointer;
       font-size: 13px;
@@ -119,11 +122,11 @@
 
     .btn:hover { background-color: #f3f4f6; }
     .btn-primary {
-      background-color: var(--primary);
+      background-color: var(--accent);
       color: #ffffff;
-      border-color: var(--primary);
+      border-color: var(--accent);
     }
-    .btn-primary:hover { background-color: var(--primary-hover); }
+    .btn-primary:hover { background-color: var(--accent-hover); }
 
     .auth-badge {
       display: inline-flex;
@@ -132,9 +135,9 @@
       font-size: 12px;
       padding: 4px 8px;
       border-radius: 6px;
-      background: #f1f5f9;
+      background: var(--bg-subtle);
       color: var(--text-muted);
-      border: 1px solid var(--border);
+      border: 1px solid var(--border-default);
     }
     .auth-badge.authorized {
       background: #ecfdf5;
@@ -142,57 +145,57 @@
       color: var(--success);
     }
 
-    /* 1. 初始工作台视图 */
+    /* 工作台导入视图 */
     .workspace-container {
-      max-width: 900px;
-      margin: 48px auto;
+      max-width: 920px;
+      margin: 40px auto;
       padding: 0 20px;
       width: 100%;
     }
 
     .workspace-header {
       text-align: center;
-      margin-bottom: 32px;
+      margin-bottom: 28px;
     }
-    .workspace-header h2 { margin: 0 0 8px; font-size: 24px; font-weight: 600; }
+    .workspace-header h2 { margin: 0 0 8px; font-size: 22px; font-weight: 600; }
     .workspace-header p { margin: 0; color: var(--text-muted); font-size: 14px; }
 
     .drive-hero-card {
-      background: #ffffff;
-      border: 1px solid var(--border);
+      background: var(--bg-surface);
+      border: 1px solid var(--border-default);
       border-radius: 12px;
       padding: 24px;
       text-align: center;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
-      margin-bottom: 24px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+      margin-bottom: 20px;
       transition: border-color 0.2s;
     }
-    .drive-hero-card:hover { border-color: var(--primary); }
+    .drive-hero-card:hover { border-color: var(--accent); }
 
     .grid-panels {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 20px;
-      margin-bottom: 24px;
+      gap: 16px;
+      margin-bottom: 20px;
     }
     @media (max-width: 640px) {
       .grid-panels { grid-template-columns: 1fr; }
     }
 
     .panel-card {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
+      background: var(--bg-surface);
+      border: 1px solid var(--border-default);
       border-radius: 10px;
-      padding: 20px;
+      padding: 18px;
       display: flex;
       flex-direction: column;
     }
 
     .dropzone {
-      border: 1px dashed var(--border);
+      border: 1px dashed var(--border-default);
       border-radius: 8px;
       flex: 1;
-      min-height: 150px;
+      min-height: 140px;
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -201,79 +204,122 @@
       cursor: pointer;
       text-align: center;
       padding: 16px;
-      transition: 0.2s;
+      transition: border-color 0.2s, background-color 0.2s;
     }
     .dropzone:hover, .dropzone.dragover {
-      border-color: var(--primary);
-      background: var(--primary-light);
+      border-color: var(--accent);
+      background: var(--accent-soft);
     }
 
     .options-grid {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
+      background: var(--bg-surface);
+      border: 1px solid var(--border-default);
       border-radius: 10px;
       padding: 16px 20px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 16px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 14px;
       font-size: 13px;
     }
     .options-grid label {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
       cursor: pointer;
       user-select: none;
     }
+    .options-grid input[type="number"] {
+      width: 54px;
+      padding: 2px 6px;
+      font-size: 12px;
+      border: 1px solid var(--border-default);
+      border-radius: 4px;
+    }
 
-    /* 2. 沉浸式阅读视图 */
+    /* 阅读器视图 */
     main.reader-container {
-      max-width: 900px;
+      max-width: 920px;
       width: 100%;
       margin: 24px auto 80px;
       padding: 0 16px;
     }
 
     .markdown-body {
-      background-color: var(--card-bg) !important;
-      padding: 44px;
+      background-color: var(--bg-surface) !important;
+      padding: 36px 40px;
       border-radius: 8px;
-      border: 1px solid var(--border);
-      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+      border: 1px solid var(--border-default);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    }
+
+    /* 代码块包装容器与交互工具栏 */
+    .code-block-wrapper {
       position: relative;
+      margin: 14px 0;
+      border: 1px solid var(--border-default);
+      border-radius: 6px;
+      overflow: hidden;
+      background-color: #f6f8fa;
     }
-
-    /* 代码块与悬浮复制按钮 */
-    .markdown-body pre { position: relative; }
-    .code-copy-btn {
-      position: absolute;
-      top: 8px;
-      right: 8px;
+    .code-block-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 12px;
+      background: #f1f5f9;
+      border-bottom: 1px solid var(--border-default);
       font-size: 12px;
-      padding: 3px 8px;
       color: var(--text-muted);
-      background: #f6f8fa;
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      cursor: pointer;
-      opacity: 0;
-      transition: opacity 0.15s, background-color 0.15s;
+      user-select: none;
     }
-    .markdown-body pre:hover .code-copy-btn,
-    .code-copy-btn:focus { opacity: 1; }
-    .code-copy-btn:hover { background: #e9ecef; color: var(--text); }
+    .code-block-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-weight: 500;
+    }
+    .code-block-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .code-action-btn {
+      font-size: 11.5px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border-default);
+      background: #ffffff;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: background-color 0.15s, color 0.15s;
+    }
+    .code-action-btn:hover {
+      background: #e9ecef;
+      color: var(--text-main);
+    }
+    .code-block-wrapper pre {
+      margin: 0 !important;
+      border: none !important;
+      border-radius: 0 !important;
+      background: #ffffff !important;
+      transition: max-height 0.25s ease;
+    }
+    .code-block-wrapper.collapsed pre {
+      display: none !important;
+    }
 
-    /* 源码展示文本框 */
+    /* 源码纯文本视图 */
     .raw-source-textarea {
       width: 100%;
-      min-height: 700px;
-      border: 1px solid var(--border);
+      min-height: 720px;
+      border: 1px solid var(--border-default);
       border-radius: 8px;
-      padding: 24px;
+      padding: 20px;
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       font-size: 13px;
       line-height: 1.6;
-      background: var(--card-bg);
+      background: var(--bg-surface);
       resize: vertical;
       outline: none;
       box-sizing: border-box;
@@ -287,10 +333,10 @@
       width: 40px;
       height: 40px;
       border-radius: 50%;
-      background: var(--card-bg);
-      border: 1px solid var(--border);
+      background: var(--bg-surface);
+      border: 1px solid var(--border-default);
       box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
-      color: var(--text);
+      color: var(--text-main);
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -308,7 +354,7 @@
     }
     .back-to-top:hover {
       background: #f3f4f6;
-      color: var(--primary);
+      color: var(--accent);
     }
 
     /* 云端硬盘弹窗 */
@@ -322,11 +368,10 @@
       z-index: 1000;
       backdrop-filter: blur(2px);
     }
-
     .modal-dialog {
       background: #ffffff;
       border-radius: 10px;
-      width: 620px;
+      width: 640px;
       max-width: 92%;
       max-height: 82vh;
       display: flex;
@@ -336,21 +381,21 @@
     }
     .modal-header {
       padding: 14px 20px;
-      border-bottom: 1px solid var(--border);
+      border-bottom: 1px solid var(--border-default);
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
     .modal-filter-bar {
       padding: 10px 20px;
-      border-bottom: 1px solid var(--border);
+      border-bottom: 1px solid var(--border-default);
       background: #fafbfc;
     }
     .modal-search-input {
       width: 100%;
       padding: 7px 12px;
       font-size: 13px;
-      border: 1px solid var(--border);
+      border: 1px solid var(--border-default);
       border-radius: 6px;
       outline: none;
     }
@@ -373,7 +418,7 @@
     .drive-file-title {
       font-size: 13.5px;
       font-weight: 500;
-      color: var(--text);
+      color: var(--text-main);
       display: flex;
       align-items: center;
       gap: 8px;
@@ -385,7 +430,7 @@
     .drive-file-time { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
     .modal-footer {
       padding: 10px 20px;
-      border-top: 1px solid var(--border);
+      border-top: 1px solid var(--border-default);
       background: #fafbfc;
       display: flex;
       justify-content: space-between;
@@ -408,7 +453,6 @@
     </div>
 
     <div class="header-actions">
-      <!-- 模式切换与操作区 (在阅读模式下显示) -->
       <div id="readerActions" style="display: none; align-items: center; gap: 8px;">
         <div class="view-switch">
           <button class="view-switch-btn active" id="btnViewRendered">阅读视图</button>
@@ -433,111 +477,122 @@
       </div>
 
       <div class="auth-badge" id="authBadge">
-        <span id="authStatusText">云盘未授权</span>
-        <button id="authBtn" style="border: none; background: none; color: var(--primary); cursor: pointer; padding: 0 2px; font-weight: 500;">授权</button>
+        <span id="authStatusText">云端未授权</span>
+        <button id="authBtn" style="border: none; background: none; color: var(--accent); cursor: pointer; padding: 0 2px; font-weight: 500;">授权</button>
       </div>
     </div>
   </header>
 
-  <!-- 1. 初始工作台引导容器 -->
+  <!-- 工作台引导容器 -->
   <div class="workspace-container" id="workspaceView">
     <div class="workspace-header">
       <h2>Google AI Studio 会话阅读与转换</h2>
-      <p>从云盘检索、本地文件导入，秒级生成结构化 Markdown 并内嵌完整代码与附件</p>
+      <p>支持云盘读取与本地文件导入，解析对话、思维链、代码块及云端附件</p>
     </div>
 
-    <!-- 云端直通主卡片 -->
+    <!-- 云端快捷入口 -->
     <div class="drive-hero-card">
       <div style="font-size: 28px; margin-bottom: 8px;">☁️</div>
-      <h3 style="margin: 0 0 8px 0; font-size: 16px;">直接浏览云端硬盘会话</h3>
-      <p style="margin: 0 0 16px 0; font-size: 13px; color: var(--text-muted);">自动检索 Google AI Studio 目录，无需下载导出，点选即读</p>
-      <button class="btn btn-primary" id="heroOpenDriveBtn" style="padding: 9px 20px; font-size: 14px;">
-        📂 从 Google 云端硬盘选择对话
+      <h3 style="margin: 0 0 8px 0; font-size: 16px;">读取 Google 云端硬盘会话</h3>
+      <p style="margin: 0 0 16px 0; font-size: 13px; color: var(--text-muted);">自动检索 Google AI Studio 目录，直接选择会话载入</p>
+      <button class="btn btn-primary" id="heroOpenDriveBtn" style="padding: 8px 18px; font-size: 13.5px;">
+        浏览云端硬盘文件
       </button>
     </div>
 
-    <!-- 本地导入栅格 -->
+    <!-- 本地导入入口 -->
     <div class="grid-panels">
       <div class="panel-card">
-        <div style="font-weight: 600; font-size: 14px; margin-bottom: 10px;">导入本地文件</div>
+        <div style="font-weight: 600; font-size: 13.5px; margin-bottom: 10px;">导入本地文件</div>
         <div class="dropzone" id="dropzoneArea">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted); margin-bottom: 6px;">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted); margin-bottom: 6px;">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="17 8 12 3 7 8"></polyline>
             <line x1="12" y1="3" x2="12" y2="15"></line>
           </svg>
-          <div style="font-size: 13.5px;">拖放 .json、.txt 或无后缀文件至此处</div>
+          <div style="font-size: 13px;">拖放 .json、.txt 或 prompt 导出文件至此处</div>
           <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">或点击选择文件</div>
         </div>
         <input type="file" id="localFileInput" style="display: none;">
       </div>
 
       <div class="panel-card">
-        <div style="font-weight: 600; font-size: 14px; margin-bottom: 10px;">粘贴 JSON 文本</div>
-        <textarea id="pasteTextInput" style="width: 100%; flex: 1; min-height: 150px; border: 1px dashed var(--border); border-radius: 8px; padding: 12px; font-family: monospace; font-size: 12px; resize: none; outline: none; background: #fafbfc;" placeholder="直接按 Ctrl + V (或 ⌘ + V) 粘贴会话 JSON 内容..."></textarea>
+        <div style="font-weight: 600; font-size: 13.5px; margin-bottom: 10px;">粘贴 JSON 结构</div>
+        <textarea id="pasteTextInput" style="width: 100%; flex: 1; min-height: 140px; border: 1px dashed var(--border-default); border-radius: 8px; padding: 12px; font-family: monospace; font-size: 12px; resize: none; outline: none; background: #fafbfc;" placeholder="直接粘贴会话导出的 JSON 文本..."></textarea>
       </div>
     </div>
 
-    <!-- 偏好设置 -->
+    <!-- 偏好与排版设置 -->
     <div class="options-grid">
-      <label><input type="checkbox" id="optCardLayout" checked> 卡片式对话布局</label>
-      <label><input type="checkbox" id="optCollapseThoughts" checked> 折叠思考过程 (Thinking)</label>
+      <label><input type="checkbox" id="optCardLayout" checked> 卡片式气泡排版</label>
+      <label><input type="checkbox" id="optCollapseThoughts" checked> 默认折叠思考过程 (Thinking)</label>
       <label><input type="checkbox" id="optShowTimestamp" checked> 显示消息时间戳</label>
-      <label><input type="checkbox" id="optExtractSystemPrompt" checked> 提取系统提示词 (System Prompt)</label>
-      <label><input type="checkbox" id="optEmbedTextDocAsCode" checked> 将文本附件以代码块嵌在开头</label>
-      <label><input type="checkbox" id="optAutoDownloadDrive" checked> 自动同步云端硬盘图片与文档</label>
+      <label><input type="checkbox" id="optExtractSystemPrompt" checked> 提取系统指令 (System Instruction)</label>
+      <label><input type="checkbox" id="optEmbedTextDocAsCode" checked> 文本附件以代码块置顶</label>
+      <label><input type="checkbox" id="optAutoDownloadDrive" checked> 自动同步云端多媒体与文档</label>
+      <label>
+        <input type="checkbox" id="optAutoCollapseUserCode" checked>
+        折叠用户长代码 (超过
+        <input type="number" id="optUserCodeLineThreshold" value="20" min="5" max="500" onclick="event.stopPropagation()">
+        行)
+      </label>
     </div>
   </div>
 
-  <!-- 2. 全幅沉浸式阅读区域 -->
+  <!-- 阅读展示视图 -->
   <main class="reader-container" id="readerView" style="display: none;">
-    <!-- 渲染后的 Markdown 视图 -->
     <article class="markdown-body" id="renderedContainer"></article>
-
-    <!-- Markdown 源码纯文本视图 -->
     <textarea class="raw-source-textarea" id="rawSourceContainer" readonly style="display: none;"></textarea>
   </main>
 
-  <!-- 回到顶部悬浮按钮 -->
+  <!-- 悬浮回到顶部 -->
   <button id="backToTopBtn" class="back-to-top" title="回到顶部">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
       <path d="M18 15l-6-6-6 6"/>
     </svg>
   </button>
 
-  <!-- 云盘文件选择弹窗 -->
+  <!-- 云盘选取模态框 -->
   <div class="modal-backdrop" id="driveModal">
     <div class="modal-dialog">
       <div class="modal-header">
-        <h3 style="margin: 0; font-size: 15px; font-weight: 600;">选择 Google AI Studio 对话</h3>
+        <h3 style="margin: 0; font-size: 14.5px; font-weight: 600;">从 Google 云端硬盘选择对话</h3>
         <button id="modalCloseBtn" style="background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted);">&times;</button>
       </div>
       <div class="modal-filter-bar">
-        <input type="text" id="modalSearchInput" class="modal-search-input" placeholder="搜索对话名称...">
+        <input type="text" id="modalSearchInput" class="modal-search-input" placeholder="输入关键字搜索对话名称...">
       </div>
       <div class="modal-body" id="driveModalList">
-        <div style="text-align: center; padding: 32px 0; color: var(--text-muted);">正在检索云端硬盘...</div>
+        <div style="text-align: center; padding: 32px 0; color: var(--text-muted);">正在检索云端数据...</div>
       </div>
       <div class="modal-footer">
         <span id="modalCounterText" style="font-size: 12px; color: var(--text-muted);">已筛选 0 个文件</span>
-        <button id="modalLoadMoreBtn" class="btn" style="font-size: 12px; padding: 4px 10px; display: none;">加载更早的内容</button>
+        <button id="modalLoadMoreBtn" class="btn" style="font-size: 12px; padding: 4px 10px; display: none;">加载更多</button>
       </div>
     </div>
   </div>
 
   <script>
-    // 基础配置
-    const GOOGLE_CLIENT_ID = '852360108690-naniu3i5sj7frv72de7jn8vq5578bd2b.apps.googleusercontent.com';
-    const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.readonly';
-    const STORAGE_KEY_TOKEN = 'ai_studio_md_token';
-    const STORAGE_KEY_EXPIRY = 'ai_studio_md_token_expiry';
-    const STORAGE_KEY_PERMANENT = 'ai_studio_has_authorized';
+    /**
+     * 基础应用配置与授权作用域
+     */
+    const CONFIG = {
+      GOOGLE_CLIENT_ID: '852360108690-naniu3i5sj7frv72de7jn8vq5578bd2b.apps.googleusercontent.com',
+      DRIVE_SCOPE: 'https://www.googleapis.com/auth/drive.readonly',
+      STORAGE_KEY_TOKEN: 'ai_studio_md_token',
+      STORAGE_KEY_EXPIRY: 'ai_studio_md_token_expiry',
+      STORAGE_KEY_FLAG: 'ai_studio_has_authorized'
+    };
 
+    // 应用状态变量
     let tokenClient = null;
     let accessToken = null;
     let driveFolderId = null;
     let driveNextPageToken = null;
     let allLoadedFiles = [];
+    let currentMarkdown = '';
+    let documentTitle = 'chat_export';
+    let parsedPayload = null;
 
     const driveAttachmentCache = new Map();
 
@@ -578,15 +633,93 @@
     const optExtractSystemPrompt = document.getElementById('optExtractSystemPrompt');
     const optEmbedTextDocAsCode = document.getElementById('optEmbedTextDocAsCode');
     const optAutoDownloadDrive = document.getElementById('optAutoDownloadDrive');
+    const optAutoCollapseUserCode = document.getElementById('optAutoCollapseUserCode');
+    const optUserCodeLineThreshold = document.getElementById('optUserCodeLineThreshold');
 
-    let currentMarkdown = '';
-    let documentTitle = 'chat_export';
-    let parsedPayload = null;
-
-    // marked 基础设置
+    // 初始化 Markdown 渲染器配置
     marked.setOptions({ breaks: true, gfm: true });
 
-    // 视图切换交互
+    /**
+     * 身份验证与 Token 管理
+     */
+    function restoreTokenSession() {
+      const savedToken = localStorage.getItem(CONFIG.STORAGE_KEY_TOKEN);
+      const expiry = localStorage.getItem(CONFIG.STORAGE_KEY_EXPIRY);
+      const hasAuthorized = localStorage.getItem(CONFIG.STORAGE_KEY_FLAG);
+
+      if (savedToken && expiry && Date.now() < parseInt(expiry, 10)) {
+        accessToken = savedToken;
+        updateAuthStatusUI(true);
+      } else if (hasAuthorized) {
+        requestTokenSilently();
+      } else {
+        clearTokenSession();
+      }
+    }
+
+    function requestTokenSilently() {
+      if (tokenClient) tokenClient.requestAccessToken({ prompt: '' });
+    }
+
+    function persistTokenSession(token, expiresInSeconds = 3599) {
+      accessToken = token;
+      localStorage.setItem(CONFIG.STORAGE_KEY_TOKEN, token);
+      localStorage.setItem(CONFIG.STORAGE_KEY_EXPIRY, (Date.now() + expiresInSeconds * 1000).toString());
+      localStorage.setItem(CONFIG.STORAGE_KEY_FLAG, '1');
+      updateAuthStatusUI(true);
+    }
+
+    function clearTokenSession() {
+      accessToken = null;
+      localStorage.removeItem(CONFIG.STORAGE_KEY_TOKEN);
+      localStorage.removeItem(CONFIG.STORAGE_KEY_EXPIRY);
+      updateAuthStatusUI(false);
+    }
+
+    function updateAuthStatusUI(isAuthorized) {
+      if (isAuthorized) {
+        authBadge.classList.add('authorized');
+        authStatusText.textContent = '云端已授权';
+        authBtn.textContent = '切换';
+      } else {
+        authBadge.classList.remove('authorized');
+        authStatusText.textContent = '云端未授权';
+        authBtn.textContent = '授权';
+      }
+    }
+
+    function initGoogleClient() {
+      if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
+        tokenClient = google.accounts.oauth2.initTokenClient({
+          client_id: CONFIG.GOOGLE_CLIENT_ID,
+          scope: CONFIG.DRIVE_SCOPE,
+          callback: async (tokenResponse) => {
+            if (tokenResponse && tokenResponse.access_token) {
+              persistTokenSession(tokenResponse.access_token, tokenResponse.expires_in || 3599);
+              if (parsedPayload) await syncDriveAttachments();
+            }
+          }
+        });
+
+        if (!accessToken && localStorage.getItem(CONFIG.STORAGE_KEY_FLAG)) {
+          requestTokenSilently();
+        }
+      }
+    }
+
+    window.addEventListener('load', () => {
+      restoreTokenSession();
+      initGoogleClient();
+    });
+
+    authBtn.addEventListener('click', () => {
+      if (!tokenClient) initGoogleClient();
+      if (tokenClient) tokenClient.requestAccessToken({ prompt: accessToken ? '' : 'consent' });
+    });
+
+    /**
+     * 视图切换与基本控制
+     */
     btnViewRendered.addEventListener('click', () => {
       btnViewRendered.classList.add('active');
       btnViewRaw.classList.remove('active');
@@ -609,131 +742,114 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
 
-    // 认证与静默无感续期
-    function restoreSavedToken() {
-      const savedToken = localStorage.getItem(STORAGE_KEY_TOKEN);
-      const expiry = localStorage.getItem(STORAGE_KEY_EXPIRY);
-      const hasAuthorized = localStorage.getItem(STORAGE_KEY_PERMANENT);
+    /**
+     * 代码高亮渲染、元数据检测与折叠控制装配
+     */
+    function setupCodeBlocks(container) {
+      const codeBlocks = container.querySelectorAll('pre code');
+      const threshold = parseInt(optUserCodeLineThreshold.value, 10) || 20;
+      const shouldCollapseUser = optAutoCollapseUserCode.checked;
 
-      if (savedToken && expiry && Date.now() < parseInt(expiry, 10)) {
-        accessToken = savedToken;
-        setAuthorizedUI(true);
-      } else if (hasAuthorized) {
-        attemptSilentTokenRefresh();
-      } else {
-        clearSavedToken();
-      }
-    }
+      codeBlocks.forEach((codeEl) => {
+        const preEl = codeEl.parentElement;
+        if (!preEl || preEl.parentElement.classList.contains('code-block-wrapper')) return;
 
-    function attemptSilentTokenRefresh() {
-      if (tokenClient) tokenClient.requestAccessToken({ prompt: '' });
-    }
-
-    function saveToken(token, expiresInSeconds = 3599) {
-      accessToken = token;
-      localStorage.setItem(STORAGE_KEY_TOKEN, token);
-      localStorage.setItem(STORAGE_KEY_EXPIRY, (Date.now() + expiresInSeconds * 1000).toString());
-      localStorage.setItem(STORAGE_KEY_PERMANENT, '1');
-      setAuthorizedUI(true);
-    }
-
-    function clearSavedToken() {
-      accessToken = null;
-      localStorage.removeItem(STORAGE_KEY_TOKEN);
-      localStorage.removeItem(STORAGE_KEY_EXPIRY);
-      setAuthorizedUI(false);
-    }
-
-    function setAuthorizedUI(isAuthorized) {
-      if (isAuthorized) {
-        authBadge.classList.add('authorized');
-        authStatusText.textContent = '已授权';
-        authBtn.textContent = '切换';
-      } else {
-        authBadge.classList.remove('authorized');
-        authStatusText.textContent = '未授权';
-        authBtn.textContent = '授权';
-      }
-    }
-
-    function initGoogleClient() {
-      if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
-        tokenClient = google.accounts.oauth2.initTokenClient({
-          client_id: GOOGLE_CLIENT_ID,
-          scope: DRIVE_SCOPE,
-          callback: async (tokenResponse) => {
-            if (tokenResponse && tokenResponse.access_token) {
-              saveToken(tokenResponse.access_token, tokenResponse.expires_in || 3599);
-              if (parsedPayload) await pullDriveAttachments();
-            }
-          }
-        });
-
-        if (!accessToken && localStorage.getItem(STORAGE_KEY_PERMANENT)) {
-          attemptSilentTokenRefresh();
-        }
-      }
-    }
-
-    window.addEventListener('load', () => {
-      restoreSavedToken();
-      initGoogleClient();
-    });
-
-    authBtn.addEventListener('click', () => {
-      if (!tokenClient) initGoogleClient();
-      if (tokenClient) tokenClient.requestAccessToken({ prompt: accessToken ? '' : 'consent' });
-    });
-
-    // 核心代码高亮与复制功能挂载 (保证 100% 成功彩色高亮)
-    function enhanceRenderedView(container) {
-      container.querySelectorAll('pre code').forEach((block) => {
-        // 1. 调用 highlight.js 渲染彩色语法高亮
+        // 执行语法高亮处理
         if (typeof hljs !== 'undefined' && typeof hljs.highlightElement === 'function') {
           try {
-            hljs.highlightElement(block);
+            hljs.highlightElement(codeEl);
           } catch (e) {}
         }
 
-        // 2. 挂载右上角复制按钮
-        const pre = block.parentElement;
-        if (pre.querySelector('.code-copy-btn')) return;
+        // 解析语言名称
+        let language = 'TEXT';
+        codeEl.classList.forEach((cls) => {
+          if (cls.startsWith('language-')) {
+            language = cls.replace('language-', '').toUpperCase();
+          }
+        });
 
+        const rawCode = codeEl.innerText;
+        const lineCount = rawCode.split('\n').length;
+
+        // 判断当前代码所属消息的角色（根据气泡上级属性判定）
+        const messageCard = preEl.closest('[data-message-role]');
+        const messageRole = messageCard ? messageCard.getAttribute('data-message-role') : '';
+        const isUserMessage = messageRole === 'user';
+
+        // 仅在属于用户消息且达到指定行数时，设置初始折叠
+        const defaultCollapsed = isUserMessage && shouldCollapseUser && lineCount >= threshold;
+
+        // 构建外部包裹容器
+        const wrapper = document.createElement('div');
+        wrapper.className = `code-block-wrapper${defaultCollapsed ? ' collapsed' : ''}`;
+
+        // 构建顶部元数据与交互工具栏
+        const header = document.createElement('div');
+        header.className = 'code-block-header';
+
+        const meta = document.createElement('div');
+        meta.className = 'code-block-meta';
+        meta.innerHTML = `<span>${escapeHtml(language)}</span><span style="opacity: 0.6; font-size: 11px;">(${lineCount} 行)</span>`;
+
+        const actions = document.createElement('div');
+        actions.className = 'code-block-actions';
+
+        // 折叠 / 展开切换按钮（允许用户自由折叠所有代码块）
+        const toggleBtn = document.createElement('button');
+        toggleBtn.className = 'code-action-btn';
+        toggleBtn.textContent = defaultCollapsed ? '展开' : '折叠';
+        toggleBtn.onclick = () => {
+          const isCollapsed = wrapper.classList.toggle('collapsed');
+          toggleBtn.textContent = isCollapsed ? '展开' : '折叠';
+        };
+
+        // 复制代码按钮
         const copyBtn = document.createElement('button');
-        copyBtn.className = 'code-copy-btn';
+        copyBtn.className = 'code-action-btn';
         copyBtn.textContent = '复制';
         copyBtn.onclick = async () => {
-          await copyText(block.innerText);
+          await writeClipboardText(rawCode);
           copyBtn.textContent = '已复制 ✓';
           setTimeout(() => { copyBtn.textContent = '复制'; }, 1500);
         };
-        pre.appendChild(copyBtn);
+
+        actions.appendChild(toggleBtn);
+        actions.appendChild(copyBtn);
+        header.appendChild(meta);
+        header.appendChild(actions);
+
+        // 挂载至 DOM
+        preEl.parentNode.insertBefore(wrapper, preEl);
+        wrapper.appendChild(header);
+        wrapper.appendChild(preEl);
       });
     }
 
-    // 筛选对话文件 (.json, .txt, 无后缀)
-    function isTargetChatFile(fileName) {
+    /**
+     * 云端硬盘检索与文件加载
+     */
+    function isEligibleChatFile(fileName) {
       if (!fileName) return false;
       const lower = fileName.toLowerCase();
-      const blocked = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.pdf', '.zip', '.mp3', '.mp4'];
-      if (blocked.some(ext => lower.endsWith(ext))) return false;
+      const blockedExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.pdf', '.zip', '.mp3', '.mp4'];
+      if (blockedExtensions.some(ext => lower.endsWith(ext))) return false;
       return !fileName.includes('.') || lower.endsWith('.json') || lower.endsWith('.txt');
     }
 
-    // 打开云端硬盘选择器
     heroOpenDriveBtn.addEventListener('click', () => {
       if (!accessToken) {
         if (!tokenClient) initGoogleClient();
         tokenClient.requestAccessToken({ prompt: 'consent' });
         return;
       }
-      openDriveModal();
+      displayDriveBrowser();
     });
 
     modalCloseBtn.addEventListener('click', () => { driveModal.style.display = 'none'; });
     driveModal.addEventListener('click', (e) => { if (e.target === driveModal) driveModal.style.display = 'none'; });
 
-    async function openDriveModal() {
+    async function displayDriveBrowser() {
       driveModal.style.display = 'flex';
       modalSearchInput.value = '';
       driveNextPageToken = null;
@@ -750,13 +866,13 @@
             driveFolderId = folderData.files[0].id;
           }
         }
-        await fetchDriveFilesPage();
+        await loadDriveFilesPage();
       } catch (err) {
-        driveModalList.innerHTML = `<div style="text-align: center; padding: 24px 0; color: var(--danger);">检索失败: ${err.message}</div>`;
+        driveModalList.innerHTML = `<div style="text-align: center; padding: 24px 0; color: var(--danger);">检索失败: ${escapeHtml(err.message)}</div>`;
       }
     }
 
-    async function fetchDriveFilesPage() {
+    async function loadDriveFilesPage() {
       let query = "trashed=false";
       if (driveFolderId) {
         query += ` and '${driveFolderId}' in parents`;
@@ -774,7 +890,7 @@
       modalLoadMoreBtn.style.display = driveNextPageToken ? 'inline-block' : 'none';
 
       if (data.files && data.files.length > 0) {
-        allLoadedFiles = allLoadedFiles.concat(data.files.filter(f => isTargetChatFile(f.name)));
+        allLoadedFiles = allLoadedFiles.concat(data.files.filter(f => isEligibleChatFile(f.name)));
       }
 
       renderFileList(modalSearchInput.value.trim());
@@ -782,22 +898,22 @@
 
     modalLoadMoreBtn.addEventListener('click', () => {
       modalLoadMoreBtn.textContent = '加载中...';
-      fetchDriveFilesPage().then(() => { modalLoadMoreBtn.textContent = '加载更早的内容'; });
+      loadDriveFilesPage().then(() => { modalLoadMoreBtn.textContent = '加载更多'; });
     });
 
     modalSearchInput.addEventListener('input', (e) => {
       renderFileList(e.target.value.trim());
     });
 
-    function renderFileList(keyword = '') {
-      const list = keyword
-        ? allLoadedFiles.filter(f => f.name.toLowerCase().includes(keyword.toLowerCase()))
+    function renderFileList(filterText = '') {
+      const list = filterText
+        ? allLoadedFiles.filter(f => f.name.toLowerCase().includes(filterText.toLowerCase()))
         : allLoadedFiles;
 
       modalCounterText.textContent = `已筛选 ${list.length} 个会话文件`;
 
       if (!list.length) {
-        driveModalList.innerHTML = '<div style="text-align: center; padding: 32px 0; color: var(--text-muted);">未找到符合条件的对话文件</div>';
+        driveModalList.innerHTML = '<div style="text-align: center; padding: 32px 0; color: var(--text-muted);">未找到相符的会话文件</div>';
         return;
       }
 
@@ -807,21 +923,21 @@
         item.className = 'drive-file-item';
         const dateStr = new Date(file.modifiedTime).toLocaleString();
         item.innerHTML = `
-          <div class="drive-file-title" title="${file.name}">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0969da" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+          <div class="drive-file-title" title="${escapeHtml(file.name)}">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0969da" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
               <polyline points="14 2 14 8 20 8"></polyline>
             </svg>
-            <span style="overflow:hidden;text-overflow:ellipsis;">${file.name}</span>
+            <span style="overflow:hidden;text-overflow:ellipsis;">${escapeHtml(file.name)}</span>
           </div>
           <div class="drive-file-time">${dateStr}</div>
         `;
-        item.onclick = () => loadFileFromDrive(file.id, file.name);
+        item.onclick = () => loadSessionFromDrive(file.id, file.name);
         driveModalList.appendChild(item);
       });
     }
 
-    async function loadFileFromDrive(fileId, fileName) {
+    async function loadSessionFromDrive(fileId, fileName) {
       driveModal.style.display = 'none';
       documentTitle = fileName.replace(/\.(json|txt|md)$/i, '') || 'chat_export';
 
@@ -829,31 +945,33 @@
         const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
           headers: { 'Authorization': `Bearer ${accessToken}` }
         });
-        const text = await res.text();
-        await parseAndTransform(text);
+        const content = await res.text();
+        await parseAndApplySession(content);
       } catch (err) {
-        alert(`读取会话失败: ${err.message}`);
+        alert(`加载会话失败: ${err.message}`);
       }
     }
 
-    // 本地文件选取与拖放
+    /**
+     * 本地文件解析与输入处理
+     */
     dropzoneArea.addEventListener('click', () => localFileInput.click());
     dropzoneArea.addEventListener('dragover', (e) => { e.preventDefault(); dropzoneArea.classList.add('dragover'); });
     dropzoneArea.addEventListener('dragleave', () => { dropzoneArea.classList.remove('dragover'); });
     dropzoneArea.addEventListener('drop', (e) => {
       e.preventDefault();
       dropzoneArea.classList.remove('dragover');
-      if (e.dataTransfer && e.dataTransfer.files.length) handleLocalFile(e.dataTransfer.files[0]);
+      if (e.dataTransfer && e.dataTransfer.files.length) handleLocalFileInput(e.dataTransfer.files[0]);
     });
 
     localFileInput.addEventListener('change', (e) => {
-      if (e.target.files && e.target.files.length) handleLocalFile(e.target.files[0]);
+      if (e.target.files && e.target.files.length) handleLocalFileInput(e.target.files[0]);
     });
 
-    function handleLocalFile(file) {
+    function handleLocalFileInput(file) {
       documentTitle = file.name.replace(/\.(json|txt|md)$/i, '') || 'chat_export';
       const reader = new FileReader();
-      reader.onload = async (e) => { await parseAndTransform(e.target.result); };
+      reader.onload = async (e) => { await parseAndApplySession(e.target.result); };
       reader.readAsText(file);
     }
 
@@ -861,43 +979,49 @@
       const text = (e.clipboardData || window.clipboardData).getData('text');
       if (text && text.trim()) {
         documentTitle = 'pasted_chat';
-        await parseAndTransform(text.trim());
+        await parseAndApplySession(text.trim());
         pasteTextInput.value = '';
       }
     });
 
-    // 配置变动自动刷新排版
-    [optCardLayout, optCollapseThoughts, optShowTimestamp, optExtractSystemPrompt, optEmbedTextDocAsCode].forEach(checkbox => {
-      checkbox.addEventListener('change', () => {
+    // 配置变动时自动重绘视图
+    [
+      optCardLayout,
+      optCollapseThoughts,
+      optShowTimestamp,
+      optExtractSystemPrompt,
+      optEmbedTextDocAsCode,
+      optAutoCollapseUserCode,
+      optUserCodeLineThreshold
+    ].forEach(input => {
+      input.addEventListener('change', () => {
         if (parsedPayload) renderMarkdownContent();
       });
     });
 
-    async function parseAndTransform(rawText) {
+    async function parseAndApplySession(rawText) {
       try {
         parsedPayload = JSON.parse(rawText.trim());
         renderMarkdownContent();
 
-        // 切换到沉浸式阅读视图
         workspaceView.style.display = 'none';
         readerView.style.display = 'block';
         readerActions.style.display = 'flex';
         headerTitle.textContent = documentTitle;
         window.scrollTo({ top: 0, behavior: 'instant' });
 
-        // 自动拉取云端附件
-        if (optAutoDownloadDrive.checked && countDriveAttachments(parsedPayload) > 0) {
+        if (optAutoDownloadDrive.checked && getAttachmentCount(parsedPayload) > 0) {
           if (accessToken) {
-            await pullDriveAttachments();
+            await syncDriveAttachments();
           }
         }
       } catch (err) {
-        alert(`解析失败，请确保格式正确: ${err.message}`);
+        alert(`会话解析失败，请确保格式正确: ${err.message}`);
       }
     }
 
-    function countDriveAttachments(json) {
-      const rawChunks = extractRawChunks(json);
+    function getAttachmentCount(json) {
+      const rawChunks = extractSessionChunks(json);
       let count = 0;
       rawChunks.forEach(chunk => {
         if (chunk.driveImage && chunk.driveImage.id) count++;
@@ -906,24 +1030,24 @@
       return count;
     }
 
-    function isTextBasedFile(mimeType, fileName = '') {
+    function isTextType(mimeType, fileName = '') {
       if (mimeType && (mimeType.startsWith('text/') || mimeType.includes('json') || mimeType.includes('javascript') || mimeType.includes('xml'))) return true;
       const ext = fileName.split('.').pop().toLowerCase();
-      const textExts = ['txt', 'py', 'js', 'ts', 'jsx', 'tsx', 'json', 'md', 'html', 'css', 'c', 'cpp', 'java', 'go', 'rs', 'sh', 'yaml', 'yml', 'csv'];
-      return textExts.includes(ext);
+      const codeExtensions = ['txt', 'py', 'js', 'ts', 'jsx', 'tsx', 'json', 'md', 'html', 'css', 'c', 'cpp', 'java', 'go', 'rs', 'sh', 'yaml', 'yml', 'csv'];
+      return codeExtensions.includes(ext);
     }
 
-    function getCodeLanguage(fileName = '') {
+    function detectCodeLanguage(fileName = '') {
       const ext = fileName.split('.').pop().toLowerCase();
-      const map = {
+      const mapping = {
         'py': 'python', 'js': 'javascript', 'ts': 'typescript', 'json': 'json',
         'html': 'html', 'css': 'css', 'sh': 'bash', 'cpp': 'cpp', 'c': 'c',
         'java': 'java', 'go': 'go', 'rs': 'rust', 'md': 'markdown', 'sql': 'sql'
       };
-      return map[ext] || '';
+      return mapping[ext] || '';
     }
 
-    async function fetchDriveMedia(fileId) {
+    async function fetchDriveMediaResource(fileId) {
       if (driveAttachmentCache.has(fileId)) return driveAttachmentCache.get(fileId);
 
       try {
@@ -934,9 +1058,9 @@
             headers: { 'Authorization': `Bearer ${accessToken}` }
           });
           if (metaRes.ok) {
-            const metaJson = await metaRes.json();
-            if (metaJson.mimeType) mimeType = metaJson.mimeType;
-            if (metaJson.name) fileName = metaJson.name;
+            const meta = await metaRes.json();
+            if (meta.mimeType) mimeType = meta.mimeType;
+            if (meta.name) fileName = meta.name;
           }
         } catch (e) {}
 
@@ -946,7 +1070,7 @@
         if (!mediaRes.ok) throw new Error(`HTTP ${mediaRes.status}`);
 
         const blob = await mediaRes.blob();
-        const isText = isTextBasedFile(mimeType, fileName);
+        const isText = isTextType(mimeType, fileName);
 
         let textContent = null;
         let dataUrl = null;
@@ -970,10 +1094,10 @@
       }
     }
 
-    async function pullDriveAttachments() {
+    async function syncDriveAttachments() {
       if (!accessToken) return;
 
-      const rawChunks = extractRawChunks(parsedPayload);
+      const rawChunks = extractSessionChunks(parsedPayload);
       const fileIds = new Set();
       rawChunks.forEach(chunk => {
         if (chunk.driveImage && chunk.driveImage.id) fileIds.add(chunk.driveImage.id);
@@ -983,12 +1107,12 @@
       if (fileIds.size === 0) return;
 
       for (const id of fileIds) {
-        await fetchDriveMedia(id);
+        await fetchDriveMediaResource(id);
       }
       renderMarkdownContent();
     }
 
-    function extractRawChunks(data) {
+    function extractSessionChunks(data) {
       if (!data) return [];
       if (Array.isArray(data)) return data;
       if (data.chunkedPrompt && Array.isArray(data.chunkedPrompt.chunks)) return data.chunkedPrompt.chunks;
@@ -998,7 +1122,7 @@
       return [];
     }
 
-    function extractSystemInstruction(data) {
+    function extractSystemPrompt(data) {
       const raw = data.systemInstruction || 
         (data.chunkedPrompt && data.chunkedPrompt.systemInstruction) ||
         (data.prompt && data.prompt.systemInstruction);
@@ -1063,9 +1187,11 @@
       return merged;
     }
 
-    // 生成 Markdown 并渲染至视图
+    /**
+     * Markdown 结构生成与页面渲染
+     */
     function renderMarkdownContent() {
-      const rawChunks = extractRawChunks(parsedPayload);
+      const rawChunks = extractSessionChunks(parsedPayload);
       if (!rawChunks.length) return;
 
       const messages = mergeConsecutiveMessages(rawChunks);
@@ -1082,7 +1208,7 @@
       md += `> **对话轮次**: ${messages.length} 轮  \n\n`;
 
       if (extractSysPrompt) {
-        const sys = extractSystemInstruction(parsedPayload);
+        const sys = extractSystemPrompt(parsedPayload);
         if (sys) {
           md += `<details>\n<summary><b>系统提示词 (System Instruction)</b></summary>\n\n`;
           md += `> ` + sys.replace(/\n/g, '\n> ') + `\n\n`;
@@ -1114,18 +1240,24 @@
                 const cached = driveAttachmentCache.get(att.id);
 
                 if (cached.isText && embedTextAsCode) {
-                  const lang = getCodeLanguage(cached.fileName);
-                  topAttachmentsMd += `**📄 上传文档 (${cached.fileName || 'document'})**:\n\n\`\`\`${lang}\n${cached.textContent}\n\`\`\`\n\n`;
+                  const lang = detectCodeLanguage(cached.fileName);
+                  const fileLineCount = cached.textContent.split('\n').length;
+                  // 文本附件长内容自动默认折叠
+                  topAttachmentsMd += `<details style="margin-bottom:12px;border:1px solid #cbd5e1;border-radius:6px;padding:6px 12px;background:#f8fafc;">\n` +
+                    `<summary style="cursor:pointer;font-size:13px;font-weight:500;color:#0969da;">` +
+                    `📄 上传文档: ${escapeHtml(cached.fileName || 'document')} (${fileLineCount} 行)` +
+                    `</summary>\n\n` +
+                    `\`\`\`${lang}\n${cached.textContent}\n\`\`\`\n\n` +
+                    `</details>\n\n`;
                 } else if (cached.mimeType && cached.mimeType.startsWith('image/')) {
                   nonTextAttachmentsMd += `![${cached.fileName || '云端图片'}](${cached.dataUrl})\n\n`;
                 } else if (cached.mimeType && cached.mimeType.startsWith('audio/')) {
                   nonTextAttachmentsMd += `<audio controls src="${cached.dataUrl}"></audio>\n\n`;
                 } else {
-                  nonTextAttachmentsMd += `<span style="display:inline-block;padding:2px 8px;background:#e2e8f0;border-radius:4px;font-size:12px;margin-bottom:6px;">📄 ${cached.fileName || '文档附件'}</span>\n\n`;
+                  nonTextAttachmentsMd += `<span style="display:inline-block;padding:2px 8px;background:#e2e8f0;border-radius:4px;font-size:12px;margin-bottom:6px;">📄 ${escapeHtml(cached.fileName || '文档附件')}</span>\n\n`;
                 }
               } else {
-                const isImg = att.type === 'driveImage';
-                const label = isImg ? '图片附件' : '文档附件';
+                const label = att.type === 'driveImage' ? '图片附件' : '文档附件';
                 nonTextAttachmentsMd += `<a href="https://drive.google.com/file/d/${att.id}/view" target="_blank" style="text-decoration:none;display:inline-block;margin-bottom:6px;">\n` +
                   `  <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:4px;font-size:12px;color:#0969da;">\n` +
                   `    📁 ${label} (ID: <code>${att.id.slice(0, 8)}...</code> ↗)\n` +
@@ -1163,7 +1295,7 @@
             ? 'background:#f0f7ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px 20px;margin:14px 0 14px 4%;'
             : 'background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;padding:16px 20px;margin:14px 4% 14px 0;box-shadow:0 1px 2px rgba(0,0,0,0.03);';
 
-          md += `<div style="${cardStyle}">\n\n`;
+          md += `<div data-message-role="${msg.role}" style="${cardStyle}">\n\n`;
           md += `<div style="margin-bottom:8px;font-size:14px;"><b>${roleTitle}</b>${timeBadge}</div>\n\n`;
           if (topAttachmentsMd) md += `${topAttachmentsMd}\n\n`;
           if (nonTextAttachmentsMd) md += `${nonTextAttachmentsMd}\n\n`;
@@ -1171,29 +1303,43 @@
           if (bodySection) md += `${bodySection}\n\n`;
           md += `</div>\n\n`;
         } else {
+          md += `<div data-message-role="${msg.role}">\n\n`;
           md += `### ${roleTitle}${timeBadge}\n\n`;
           if (topAttachmentsMd) md += `${topAttachmentsMd}\n\n`;
           if (nonTextAttachmentsMd) md += `${nonTextAttachmentsMd}\n\n`;
           if (thoughtSection) md += `${thoughtSection}\n\n`;
           if (bodySection) md += `${bodySection}\n\n`;
-          md += `---\n\n`;
+          md += `\n\n---\n\n</div>\n\n`;
         }
       });
 
       currentMarkdown = md;
-
-      // 1. 更新 Markdown 源码框
       rawSourceContainer.value = currentMarkdown;
 
-      // 2. 渲染 HTML 并执行彩色代码高亮与复制功能挂载
       const rawHtml = marked.parse(currentMarkdown);
-      const safeHtml = DOMPurify.sanitize(rawHtml);
-      renderedContainer.innerHTML = safeHtml;
-      enhanceRenderedView(renderedContainer);
+      const cleanHtml = DOMPurify.sanitize(rawHtml, {
+        ADD_TAGS: ['audio', 'source', 'details', 'summary'],
+        ADD_ATTR: ['controls', 'target', 'style', 'data-message-role']
+      });
+
+      renderedContainer.innerHTML = cleanHtml;
+      setupCodeBlocks(renderedContainer);
     }
 
-    // 复制与下载交互
-    async function copyText(text) {
+    /**
+     * 工具方法
+     */
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    async function writeClipboardText(text) {
       if (navigator.clipboard && window.isSecureContext) {
         try {
           await navigator.clipboard.writeText(text);
@@ -1206,22 +1352,23 @@
       textarea.style.top = '-9999px';
       document.body.appendChild(textarea);
       textarea.select();
-      let success = false;
-      try { success = document.execCommand('copy'); } catch (err) {}
+      let ok = false;
+      try { ok = document.execCommand('copy'); } catch (err) {}
       document.body.removeChild(textarea);
-      return success;
+      return ok;
     }
 
     copyMarkdownBtn.addEventListener('click', async () => {
       if (!currentMarkdown) return;
-      const success = await copyText(currentMarkdown);
-      if (success) {
+      const ok = await writeClipboardText(currentMarkdown);
+      if (ok) {
         copyMarkdownBtn.textContent = '已复制 ✓';
-        setTimeout(() => { copyMarkdownBtn.innerHTML = `
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-          </svg> 复制`;
+        setTimeout(() => {
+          copyMarkdownBtn.innerHTML = `
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg> 复制`;
         }, 1500);
       }
     });
@@ -1239,7 +1386,6 @@
       URL.revokeObjectURL(blobUrl);
     });
 
-    // 回到顶部交互
     window.addEventListener('scroll', () => {
       if (window.scrollY > 300) {
         backToTopBtn.classList.add('visible');
@@ -1247,6 +1393,7 @@
         backToTopBtn.classList.remove('visible');
       }
     });
+
     backToTopBtn.addEventListener('click', () => {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
