@@ -47,7 +47,7 @@
       flex-direction: column;
     }
 
-    /* 顶部导航与操作栏 */
+    /* 顶部导航与工具栏 */
     header {
       position: sticky;
       top: 0;
@@ -104,7 +104,7 @@
       box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
     }
 
-    /* 基础按钮体系 */
+    /* 按钮规范 */
     .btn {
       padding: 6px 12px;
       border: 1px solid var(--border-default);
@@ -236,12 +236,44 @@
       border-radius: 4px;
     }
 
-    /* 阅读器视图 */
+    /* 阅读视图容器 */
     main.reader-container {
       max-width: 920px;
       width: 100%;
-      margin: 24px auto 80px;
+      margin: 20px auto 80px;
       padding: 0 16px;
+    }
+
+    /* 同步进度条 */
+    .sync-progress-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-default);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+      transition: opacity 0.3s ease;
+    }
+    .sync-progress-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .sync-progress-track {
+      width: 100%;
+      height: 6px;
+      background: var(--bg-subtle);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .sync-progress-fill {
+      width: 0%;
+      height: 100%;
+      background: var(--accent);
+      transition: width 0.2s ease;
     }
 
     .markdown-body {
@@ -252,7 +284,7 @@
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
     }
 
-    /* 代码块包装容器与交互工具栏 */
+    /* 代码块包装容器与控制栏 */
     .code-block-wrapper {
       position: relative;
       margin: 14px 0;
@@ -275,9 +307,9 @@
     .code-block-meta {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-weight: 500;
+      font-size: 12px;
     }
     .code-block-actions {
       display: flex;
@@ -303,7 +335,6 @@
       border: none !important;
       border-radius: 0 !important;
       background: #ffffff !important;
-      transition: max-height 0.25s ease;
     }
     .code-block-wrapper.collapsed pre {
       display: none !important;
@@ -477,8 +508,8 @@
       </div>
 
       <div class="auth-badge" id="authBadge">
-        <span id="authStatusText">云端未授权</span>
-        <button id="authBtn" style="border: none; background: none; color: var(--accent); cursor: pointer; padding: 0 2px; font-weight: 500;">授权</button>
+        <span id="authStatusText">云端未连接</span>
+        <button id="authBtn" style="border: none; background: none; color: var(--accent); cursor: pointer; padding: 0 2px; font-weight: 500;">连接云盘</button>
       </div>
     </div>
   </header>
@@ -541,6 +572,17 @@
 
   <!-- 阅读展示视图 -->
   <main class="reader-container" id="readerView" style="display: none;">
+    <!-- 云端附件同步进度指示条 -->
+    <div class="sync-progress-card" id="syncProgressCard" style="display: none;">
+      <div class="sync-progress-meta">
+        <span id="syncProgressText">正在同步云端附件...</span>
+        <span id="syncProgressPercent">0%</span>
+      </div>
+      <div class="sync-progress-track">
+        <div class="sync-progress-fill" id="syncProgressFill"></div>
+      </div>
+    </div>
+
     <article class="markdown-body" id="renderedContainer"></article>
     <textarea class="raw-source-textarea" id="rawSourceContainer" readonly style="display: none;"></textarea>
   </main>
@@ -584,7 +626,7 @@
       STORAGE_KEY_FLAG: 'ai_studio_has_authorized'
     };
 
-    // 应用状态变量
+    // 应用运行状态
     let tokenClient = null;
     let accessToken = null;
     let driveFolderId = null;
@@ -607,6 +649,11 @@
     const readerView = document.getElementById('readerView');
     const renderedContainer = document.getElementById('renderedContainer');
     const rawSourceContainer = document.getElementById('rawSourceContainer');
+
+    const syncProgressCard = document.getElementById('syncProgressCard');
+    const syncProgressText = document.getElementById('syncProgressText');
+    const syncProgressPercent = document.getElementById('syncProgressPercent');
+    const syncProgressFill = document.getElementById('syncProgressFill');
 
     const heroOpenDriveBtn = document.getElementById('heroOpenDriveBtn');
     const dropzoneArea = document.getElementById('dropzoneArea');
@@ -636,7 +683,6 @@
     const optAutoCollapseUserCode = document.getElementById('optAutoCollapseUserCode');
     const optUserCodeLineThreshold = document.getElementById('optUserCodeLineThreshold');
 
-    // 初始化 Markdown 渲染器配置
     marked.setOptions({ breaks: true, gfm: true });
 
     /**
@@ -673,18 +719,21 @@
       accessToken = null;
       localStorage.removeItem(CONFIG.STORAGE_KEY_TOKEN);
       localStorage.removeItem(CONFIG.STORAGE_KEY_EXPIRY);
+      localStorage.removeItem(CONFIG.STORAGE_KEY_FLAG);
       updateAuthStatusUI(false);
     }
 
     function updateAuthStatusUI(isAuthorized) {
       if (isAuthorized) {
         authBadge.classList.add('authorized');
-        authStatusText.textContent = '云端已授权';
-        authBtn.textContent = '切换';
+        authStatusText.textContent = '云端已连接';
+        authBtn.textContent = '断开';
+        authBtn.style.color = 'var(--text-muted)';
       } else {
         authBadge.classList.remove('authorized');
-        authStatusText.textContent = '云端未授权';
-        authBtn.textContent = '授权';
+        authStatusText.textContent = '云端未连接';
+        authBtn.textContent = '连接云盘';
+        authBtn.style.color = 'var(--accent)';
       }
     }
 
@@ -713,12 +762,16 @@
     });
 
     authBtn.addEventListener('click', () => {
+      if (accessToken) {
+        clearTokenSession();
+        return;
+      }
       if (!tokenClient) initGoogleClient();
-      if (tokenClient) tokenClient.requestAccessToken({ prompt: accessToken ? '' : 'consent' });
+      if (tokenClient) tokenClient.requestAccessToken({ prompt: 'consent' });
     });
 
     /**
-     * 视图切换与基本控制
+     * 视图控制
      */
     btnViewRendered.addEventListener('click', () => {
       btnViewRendered.classList.add('active');
@@ -738,12 +791,13 @@
       workspaceView.style.display = 'block';
       readerView.style.display = 'none';
       readerActions.style.display = 'none';
+      syncProgressCard.style.display = 'none';
       headerTitle.textContent = 'Google AI Studio 会话阅读器';
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
 
     /**
-     * 代码高亮渲染、元数据检测与折叠控制装配
+     * 代码块包装与折叠装配
      */
     function setupCodeBlocks(container) {
       const codeBlocks = container.querySelectorAll('pre code');
@@ -754,48 +808,39 @@
         const preEl = codeEl.parentElement;
         if (!preEl || preEl.parentElement.classList.contains('code-block-wrapper')) return;
 
-        // 执行语法高亮处理
         if (typeof hljs !== 'undefined' && typeof hljs.highlightElement === 'function') {
           try {
             hljs.highlightElement(codeEl);
           } catch (e) {}
         }
 
-        // 解析语言名称
-        let language = 'TEXT';
-        codeEl.classList.forEach((cls) => {
-          if (cls.startsWith('language-')) {
-            language = cls.replace('language-', '').toUpperCase();
-          }
-        });
-
         const rawCode = codeEl.innerText;
         const lineCount = rawCode.split('\n').length;
 
-        // 判断当前代码所属消息的角色（根据气泡上级属性判定）
         const messageCard = preEl.closest('[data-message-role]');
         const messageRole = messageCard ? messageCard.getAttribute('data-message-role') : '';
         const isUserMessage = messageRole === 'user';
-
-        // 仅在属于用户消息且达到指定行数时，设置初始折叠
         const defaultCollapsed = isUserMessage && shouldCollapseUser && lineCount >= threshold;
 
-        // 构建外部包裹容器
         const wrapper = document.createElement('div');
         wrapper.className = `code-block-wrapper${defaultCollapsed ? ' collapsed' : ''}`;
 
-        // 构建顶部元数据与交互工具栏
         const header = document.createElement('div');
         header.className = 'code-block-header';
 
         const meta = document.createElement('div');
         meta.className = 'code-block-meta';
-        meta.innerHTML = `<span>${escapeHtml(language)}</span><span style="opacity: 0.6; font-size: 11px;">(${lineCount} 行)</span>`;
+        meta.innerHTML = `
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.75;">
+            <polyline points="16 18 22 12 16 6"></polyline>
+            <polyline points="8 6 2 12 8 18"></polyline>
+          </svg>
+          <span style="font-size: 11.5px; opacity: 0.75;">${lineCount} 行代码</span>
+        `;
 
         const actions = document.createElement('div');
         actions.className = 'code-block-actions';
 
-        // 折叠 / 展开切换按钮（允许用户自由折叠所有代码块）
         const toggleBtn = document.createElement('button');
         toggleBtn.className = 'code-action-btn';
         toggleBtn.textContent = defaultCollapsed ? '展开' : '折叠';
@@ -804,7 +849,6 @@
           toggleBtn.textContent = isCollapsed ? '展开' : '折叠';
         };
 
-        // 复制代码按钮
         const copyBtn = document.createElement('button');
         copyBtn.className = 'code-action-btn';
         copyBtn.textContent = '复制';
@@ -819,7 +863,6 @@
         header.appendChild(meta);
         header.appendChild(actions);
 
-        // 挂载至 DOM
         preEl.parentNode.insertBefore(wrapper, preEl);
         wrapper.appendChild(header);
         wrapper.appendChild(preEl);
@@ -827,7 +870,7 @@
     }
 
     /**
-     * 云端硬盘检索与文件加载
+     * 云端硬盘检索与加载
      */
     function isEligibleChatFile(fileName) {
       if (!fileName) return false;
@@ -953,7 +996,7 @@
     }
 
     /**
-     * 本地文件解析与输入处理
+     * 本地文件解析
      */
     dropzoneArea.addEventListener('click', () => localFileInput.click());
     dropzoneArea.addEventListener('dragover', (e) => { e.preventDefault(); dropzoneArea.classList.add('dragover'); });
@@ -984,7 +1027,6 @@
       }
     });
 
-    // 配置变动时自动重绘视图
     [
       optCardLayout,
       optCollapseThoughts,
@@ -1094,6 +1136,9 @@
       }
     }
 
+    /**
+     * 同步附件与进度追踪
+     */
     async function syncDriveAttachments() {
       if (!accessToken) return;
 
@@ -1104,12 +1149,34 @@
         if (chunk.driveDocument && chunk.driveDocument.id) fileIds.add(chunk.driveDocument.id);
       });
 
-      if (fileIds.size === 0) return;
+      const total = fileIds.size;
+      if (total === 0) return;
 
+      // 展现同步进度栏
+      syncProgressCard.style.display = 'block';
+      syncProgressCard.style.opacity = '1';
+      syncProgressFill.style.width = '0%';
+      syncProgressText.textContent = `正在同步云端附件 (0/${total})...`;
+      syncProgressPercent.textContent = `0%`;
+
+      let current = 0;
       for (const id of fileIds) {
         await fetchDriveMediaResource(id);
+        current++;
+        const percent = Math.round((current / total) * 100);
+        syncProgressFill.style.width = `${percent}%`;
+        syncProgressText.textContent = `正在同步云端附件 (${current}/${total})...`;
+        syncProgressPercent.textContent = `${percent}%`;
       }
+
+      syncProgressText.textContent = `所有云端附件同步完毕`;
       renderMarkdownContent();
+
+      // 同步完毕后平滑收起
+      setTimeout(() => {
+        syncProgressCard.style.opacity = '0';
+        setTimeout(() => { syncProgressCard.style.display = 'none'; }, 300);
+      }, 2000);
     }
 
     function extractSessionChunks(data) {
@@ -1188,7 +1255,7 @@
     }
 
     /**
-     * Markdown 结构生成与页面渲染
+     * Markdown 生成与排版渲染
      */
     function renderMarkdownContent() {
       const rawChunks = extractSessionChunks(parsedPayload);
@@ -1242,7 +1309,6 @@
                 if (cached.isText && embedTextAsCode) {
                   const lang = detectCodeLanguage(cached.fileName);
                   const fileLineCount = cached.textContent.split('\n').length;
-                  // 文本附件长内容自动默认折叠
                   topAttachmentsMd += `<details style="margin-bottom:12px;border:1px solid #cbd5e1;border-radius:6px;padding:6px 12px;background:#f8fafc;">\n` +
                     `<summary style="cursor:pointer;font-size:13px;font-weight:500;color:#0969da;">` +
                     `📄 上传文档: ${escapeHtml(cached.fileName || 'document')} (${fileLineCount} 行)` +
@@ -1327,7 +1393,7 @@
     }
 
     /**
-     * 工具方法
+     * 辅助工具方法
      */
     function escapeHtml(str) {
       if (!str) return '';
