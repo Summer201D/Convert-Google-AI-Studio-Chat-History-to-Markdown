@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Google AI Studio 对话记录转 Markdown</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --border: #e2e8f0;
+      --border-focus: #94a3b8;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --success: #10b981;
+      --danger: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      margin: 0;
+      padding: 32px 16px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: var(--card-bg);
+      padding: 32px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+
+    .header {
+      margin-bottom: 24px;
+    }
+
+    .header h1 {
+      margin: 0 0 8px 0;
+      font-size: 20px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .header p {
+      margin: 0;
+      color: var(--text-muted);
+      font-size: 13.5px;
+    }
+
+    .upload-zone {
+      border: 2px dashed #cbd5e1;
+      border-radius: 8px;
+      padding: 28px 20px;
+      text-align: center;
+      cursor: pointer;
+      background: #f8fafc;
+      transition: border-color 0.2s, background-color 0.2s;
+    }
+
+    .upload-zone:hover,
+    .upload-zone.dragover {
+      border-color: var(--primary);
+      background: #eff6ff;
+    }
+
+    .upload-zone svg {
+      width: 36px;
+      height: 36px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .upload-tip {
+      font-size: 14px;
+      color: var(--text);
+    }
+
+    .upload-tip strong {
+      color: var(--primary);
+    }
+
+    .upload-note {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .options-panel {
+      margin-top: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      font-size: 13px;
+      background: #f8fafc;
+      padding: 12px 16px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    .options-panel label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .action-group {
+      margin-top: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 10px;
+    }
+
+    button {
+      background: var(--primary);
+      color: #ffffff;
+      border: 1px solid transparent;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 13.5px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background-color 0.15s, opacity 0.15s;
+    }
+
+    button:hover:not(:disabled) {
+      background: var(--primary-hover);
+    }
+
+    button:disabled {
+      background: #e2e8f0;
+      color: #94a3b8;
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      background: #ffffff;
+      color: var(--text);
+      border-color: var(--border);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: #f1f5f9;
+    }
+
+    .status-msg {
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .status-msg.success {
+      color: var(--success);
+    }
+
+    .status-msg.error {
+      color: var(--danger);
+    }
+
+    .preview-section {
+      margin-top: 24px;
+    }
+
+    .preview-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .preview-header h2 {
+      font-size: 14px;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .paste-link {
+      font-size: 12px;
+      color: var(--primary);
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .paste-link:hover {
+      text-decoration: underline;
+    }
+
+    textarea.preview-content {
+      width: 100%;
+      height: 380px;
+      box-sizing: border-box;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12.5px;
+      line-height: 1.6;
+      background: #ffffff;
+      resize: vertical;
+      outline: none;
+    }
+
+    textarea.preview-content:focus {
+      border-color: var(--border-focus);
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+      </svg>
+      Google AI Studio 对话记录转 Markdown
+    </h1>
+    <p>解析 Google AI Studio 导出文件，自动合并连续切片、规范格式并生成结构化 Markdown 文档。</p>
+  </div>
+
+  <div class="upload-zone" id="uploadZone">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+      <polyline points="17 8 12 3 7 8"></polyline>
+      <line x1="12" y1="3" x2="12" y2="15"></line>
+    </svg>
+    <div class="upload-tip"><strong>点击选取文件</strong> 或直接拖放导出文件至此处</div>
+    <div class="upload-note">支持 .json、.txt 或无扩展名的导出文件</div>
+    <input type="file" id="fileInput" style="display: none;">
+  </div>
+
+  <div class="options-panel">
+    <label>
+      <input type="checkbox" id="optCardLayout" checked>
+      卡片式对话排版
+    </label>
+    <label>
+      <input type="checkbox" id="optCollapseThoughts" checked>
+      保留思考过程（折叠展示）
+    </label>
+    <label>
+      <input type="checkbox" id="optShowTimestamp" checked>
+      包含消息时间戳
+    </label>
+    <label>
+      <input type="checkbox" id="optExtractSystemPrompt" checked>
+      解析系统提示词 (System Prompt)
+    </label>
+  </div>
+
+  <div class="action-group">
+    <div class="btn-group">
+      <button id="downloadBtn" disabled>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        下载 Markdown 文件
+      </button>
+      <button id="copyBtn" class="btn-secondary" disabled>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+        </svg>
+        复制到剪贴板
+      </button>
+    </div>
+    <div id="statusMessage" class="status-msg"></div>
+  </div>
+
+  <div class="preview-section">
+    <div class="preview-header">
+      <h2>Markdown 预览</h2>
+      <span class="paste-link" id="pasteJsonTrigger">从剪贴板读取 JSON</span>
+    </div>
+    <textarea id="outputArea" class="preview-content" readonly placeholder="导入文件或直接粘贴 JSON 后，Markdown 结果将在此显示..."></textarea>
+  </div>
+</div>
+
+<script>
+  // DOM 元素引用
+  const uploadZone = document.getElementById('uploadZone');
+  const fileInput = document.getElementById('fileInput');
+  const outputArea = document.getElementById('outputArea');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const copyBtn = document.getElementById('copyBtn');
+  const statusMessage = document.getElementById('statusMessage');
+  const pasteJsonTrigger = document.getElementById('pasteJsonTrigger');
+
+  const optCardLayout = document.getElementById('optCardLayout');
+  const optCollapseThoughts = document.getElementById('optCollapseThoughts');
+  const optShowTimestamp = document.getElementById('optShowTimestamp');
+  const optExtractSystemPrompt = document.getElementById('optExtractSystemPrompt');
+
+  // 内部状态
+  let currentMarkdown = '';
+  let documentTitle = 'chat_export';
+  let parsedPayload = null;
+
+  // 拖拽与上传事件监听
+  uploadZone.addEventListener('click', () => fileInput.click());
+  uploadZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadZone.classList.add('dragover');
+  });
+  uploadZone.addEventListener('dragleave', () => {
+    uploadZone.classList.remove('dragover');
+  });
+  uploadZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadZone.classList.remove('dragover');
+    if (e.dataTransfer && e.dataTransfer.files.length) {
+      loadFromFile(e.dataTransfer.files[0]);
+    }
+  });
+
+  fileInput.addEventListener('change', (e) => {
+    if (e.target.files && e.target.files.length) {
+      loadFromFile(e.target.files[0]);
+    }
+  });
+
+  // 配置项变动自动重新渲染
+  [optCardLayout, optCollapseThoughts, optShowTimestamp, optExtractSystemPrompt].forEach(checkbox => {
+    checkbox.addEventListener('change', () => {
+      if (parsedPayload) {
+        transformSessionToMarkdown(parsedPayload);
+      }
+    });
+  });
+
+  // 读取文件内容
+  function loadFromFile(file) {
+    documentTitle = file.name.replace(/\.(json|txt|md)$/i, '') || 'chat_export';
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      parseAndTransform(e.target.result, file.name);
+    };
+    reader.onerror = () => {
+      showStatus('文件读取失败，请重试。', true);
+    };
+    reader.readAsText(file);
+  }
+
+  // 剪贴板快速粘贴入口
+  pasteJsonTrigger.addEventListener('click', async () => {
+    try {
+      let text = '';
+      if (navigator.clipboard && window.isSecureContext) {
+        text = await navigator.clipboard.readText();
+      } else {
+        const inputPrompt = prompt('请粘贴 Google AI Studio 导出的 JSON 文本：');
+        if (inputPrompt) text = inputPrompt;
+      }
+
+      if (text && text.trim()) {
+        documentTitle = 'pasted_chat';
+        parseAndTransform(text.trim(), '剪贴板内容');
+      }
+    } catch (err) {
+      showStatus('读取剪贴板失败，请手动通过文件上传。', true);
+    }
+  });
+
+  // JSON 解析入口
+  function parseAndTransform(rawText, sourceDesc) {
+    try {
+      parsedPayload = JSON.parse(rawText.trim());
+      const success = transformSessionToMarkdown(parsedPayload);
+      if (success) {
+        showStatus(`已解析：${sourceDesc}`, false);
+      }
+    } catch (err) {
+      showStatus(`JSON 解析失败: ${err.message}`, true);
+    }
+  }
+
+  function showStatus(text, isError) {
+    statusMessage.textContent = text;
+    statusMessage.className = `status-msg ${isError ? 'error' : 'success'}`;
+  }
+
+  /**
+   * 规范化并提取对话切片
+   * 兼容 Google AI Studio 导出的多种结构：
+   * 1. { chunkedPrompt: { chunks: [...] } }
+   * 2. { contents: [...] }
+   * 3. { prompt: { contents: [...] } }
+   * 4. 根数组 [...]
+   */
+  function extractRawChunks(data) {
+    if (Array.isArray(data)) return data;
+    if (data.chunkedPrompt && Array.isArray(data.chunkedPrompt.chunks)) {
+      return data.chunkedPrompt.chunks;
+    }
+    if (data.prompt && Array.isArray(data.prompt.chunks)) {
+      return data.prompt.chunks;
+    }
+    if (Array.isArray(data.contents)) {
+      return data.contents;
+    }
+    if (data.prompt && Array.isArray(data.prompt.contents)) {
+      return data.prompt.contents;
+    }
+    return [];
+  }
+
+  /**
+   * 提取系统指令
+   */
+  function extractSystemInstruction(data) {
+    const rawInstruction = data.systemInstruction || 
+      (data.chunkedPrompt && data.chunkedPrompt.systemInstruction) ||
+      (data.prompt && data.prompt.systemInstruction);
+
+    if (!rawInstruction) return '';
+
+    if (typeof rawInstruction === 'string') {
+      return rawInstruction.trim();
+    }
+    if (Array.isArray(rawInstruction.parts)) {
+      return rawInstruction.parts.map(p => p.text || '').join('\n').trim();
+    }
+    return '';
+  }
+
+  /**
+   * 合并同一角色的连续消息切片
+   */
+  function mergeConsecutiveMessages(chunks) {
+    const merged = [];
+
+    chunks.forEach(chunk => {
+      // 角色映射归一化
+      let role = 'assistant';
+      if (chunk.role === 'user') {
+        role = 'user';
+      } else if (chunk.role === 'system') {
+        role = 'system';
+      } else if (chunk.role === 'model' || chunk.role === 'assistant') {
+        role = 'assistant';
+      }
+
+      let textContent = '';
+      let thoughtContent = '';
+      const attachments = [];
+
+      // 提取正文与思维链
+      if (Array.isArray(chunk.parts) && chunk.parts.length > 0) {
+        chunk.parts.forEach(part => {
+          if (part.thought && part.text) {
+            thoughtContent += part.text;
+          } else if (part.text) {
+            textContent += part.text;
+          }
+
+          // 内联数据附件
+          const inline = part.inlineData || part.inline_data;
+          if (inline && inline.mimeType) {
+            attachments.push({
+              type: 'inline',
+              mimeType: inline.mimeType,
+              data: inline.data
+            });
+          }
+        });
+      } else if (typeof chunk.text === 'string') {
+        textContent = chunk.text;
+      }
+
+      // 清理残留签名标记
+      textContent = textContent.replace(/thoughtSignature:\s*"[A-Za-z0-9+/=]+"/g, '').trim();
+
+      // 云端网盘附加引用
+      if (chunk.driveImage && chunk.driveImage.id) {
+        attachments.push({ type: 'driveImage', id: chunk.driveImage.id });
+      }
+      if (chunk.driveDocument && chunk.driveDocument.id) {
+        attachments.push({ type: 'driveDoc', id: chunk.driveDocument.id });
+      }
+
+      const last = merged[merged.length - 1];
+
+      // 连续同一角色切片合并
+      if (last && last.role === role) {
+        if (textContent) last.texts.push(textContent);
+        if (thoughtContent) last.thoughts.push(thoughtContent);
+        if (attachments.length) last.attachments.push(...attachments);
+      } else {
+        merged.push({
+          role,
+          createTime: chunk.createTime || chunk.timestamp || null,
+          texts: textContent ? [textContent] : [],
+          thoughts: thoughtContent ? [thoughtContent] : [],
+          attachments
+        });
+      }
+    });
+
+    return merged;
+  }
+
+  /**
+   * 将解析出的对象转换为 Markdown 文本
+   */
+  function transformSessionToMarkdown(json) {
+    const rawChunks = extractRawChunks(json);
+    if (!rawChunks.length) {
+      showStatus('未在该数据中检测到有效的对话切片。', true);
+      return false;
+    }
+
+    const messages = mergeConsecutiveMessages(rawChunks);
+    const useCardLayout = optCardLayout.checked;
+    const collapseThoughts = optCollapseThoughts.checked;
+    const showTimestamp = optShowTimestamp.checked;
+    const extractSysPrompt = optExtractSystemPrompt.checked;
+
+    let md = `# 对话记录: ${documentTitle}\n\n`;
+
+    // 头部元信息
+    const model = json.runSettings?.model || json.model;
+    if (model) {
+      md += `> **模型**: \`${model}\`  \n`;
+    }
+    md += `> **对话轮次**: ${messages.length} 轮  \n\n`;
+
+    // 系统提示词展示
+    if (extractSysPrompt) {
+      const systemInstruction = extractSystemInstruction(json);
+      if (systemInstruction) {
+        md += `<details>\n<summary><b>系统提示词 (System Instruction)</b></summary>\n\n`;
+        md += `> ` + systemInstruction.replace(/\n/g, '\n> ') + `\n\n`;
+        md += `</details>\n\n`;
+      }
+    }
+
+    md += `---\n\n`;
+
+    // 逐条渲染消息
+    messages.forEach(msg => {
+      let roleTitle = 'AI';
+      if (msg.role === 'user') roleTitle = 'User';
+      else if (msg.role === 'system') roleTitle = 'System';
+      else roleTitle = 'Assistant';
+
+      let timeBadge = '';
+      if (showTimestamp && msg.createTime) {
+        const timeStr = new Date(msg.createTime).toLocaleString();
+        timeBadge = ` <span style="font-size:12px;color:#64748b;font-weight:normal;">(${timeStr})</span>`;
+      }
+
+      // 1. 处理附件
+      let attachmentSection = '';
+      if (msg.attachments.length > 0) {
+        msg.attachments.forEach(att => {
+          if (att.type === 'driveImage') {
+            attachmentSection += `<span style="display:inline-block;padding:2px 8px;background:#e2e8f0;border-radius:4px;font-size:12px;margin-bottom:6px;">图片附件 (Drive ID: <code>${att.id}</code>)</span>\n\n`;
+          } else if (att.type === 'driveDoc') {
+            attachmentSection += `<span style="display:inline-block;padding:2px 8px;background:#e2e8f0;border-radius:4px;font-size:12px;margin-bottom:6px;">文档附件 (Drive ID: <code>${att.id}</code>)</span>\n\n`;
+          } else if (att.type === 'inline') {
+            if (att.mimeType.startsWith('image/')) {
+              attachmentSection += `![附件图片](data:${att.mimeType};base64,${att.data})\n\n`;
+            } else if (att.mimeType.startsWith('audio/')) {
+              attachmentSection += `<audio controls src="data:${att.mimeType};base64,${att.data}"></audio>\n\n`;
+            } else {
+              attachmentSection += `<span style="display:inline-block;padding:2px 8px;background:#e2e8f0;border-radius:4px;font-size:12px;margin-bottom:6px;">文件附件 (类型: <code>${att.mimeType}</code>)</span>\n\n`;
+            }
+          }
+        });
+      }
+
+      // 2. 处理思考过程
+      let thoughtSection = '';
+      if (collapseThoughts && msg.thoughts.length > 0) {
+        const combinedThoughts = msg.thoughts.join('\n\n').trim();
+        if (combinedThoughts) {
+          thoughtSection = `<details style="margin-bottom:12px;padding:8px 12px;background:#f8fafc;border-radius:6px;border:1px dashed #cbd5e1;">\n` +
+            `<summary style="cursor:pointer;color:#64748b;font-size:13px;"><b>思考过程 (Thinking Process)</b></summary>\n\n> ` +
+            combinedThoughts.replace(/\n/g, '\n> ') +
+            `\n\n</details>\n\n`;
+        }
+      }
+
+      // 3. 处理正文文本
+      const bodySection = msg.texts.join('\n\n').trim();
+
+      // 4. 根据排版模式输出结构
+      if (useCardLayout) {
+        const isUser = msg.role === 'user';
+        const cardStyle = isUser
+          ? 'background:#f0f7ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px 20px;margin:14px 0 14px 4%;'
+          : 'background:#ffffff;border:1px solid #e2e8f0;border-radius:10px;padding:16px 20px;margin:14px 4% 14px 0;box-shadow:0 1px 2px rgba(0,0,0,0.03);';
+
+        md += `<div style="${cardStyle}">\n\n`;
+        md += `<div style="margin-bottom:8px;font-size:14px;"><b>${roleTitle}</b>${timeBadge}</div>\n\n`;
+        if (attachmentSection) md += `${attachmentSection}\n\n`;
+        if (thoughtSection) md += `${thoughtSection}\n\n`;
+        if (bodySection) md += `${bodySection}\n\n`;
+        md += `</div>\n\n`;
+      } else {
+        md += `### ${roleTitle}${timeBadge}\n\n`;
+        if (attachmentSection) md += `${attachmentSection}\n\n`;
+        if (thoughtSection) md += `${thoughtSection}\n\n`;
+        if (bodySection) md += `${bodySection}\n\n`;
+        md += `---\n\n`;
+      }
+    });
+
+    currentMarkdown = md;
+    outputArea.value = currentMarkdown;
+    downloadBtn.disabled = false;
+    copyBtn.disabled = false;
+    return true;
+  }
+
+  // 剪贴板复制操作，内置安全降级
+  async function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch (err) {
+        // 剪贴板 API 失败，执行降级逻辑
+      }
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.top = '-9999px';
+    textarea.style.left = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+
+    let success = false;
+    try {
+      success = document.execCommand('copy');
+    } catch (err) {
+      success = false;
+    }
+    document.body.removeChild(textarea);
+    return success;
+  }
+
+  // 下载 Markdown 文件
+  downloadBtn.addEventListener('click', () => {
+    if (!currentMarkdown) return;
+    const blob = new Blob([currentMarkdown], { type: 'text/markdown;charset=utf-8' });
+    const blobUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = `${documentTitle}.md`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(blobUrl);
+  });
+
+  // 复制按钮事件
+  copyBtn.addEventListener('click', async () => {
+    if (!currentMarkdown) return;
+    const originalText = copyBtn.innerHTML;
+    const success = await copyText(currentMarkdown);
+
+    if (success) {
+      copyBtn.textContent = '已复制到剪贴板';
+      setTimeout(() => {
+        copyBtn.innerHTML = originalText;
+      }, 1500);
+    } else {
+      showStatus('复制失败，请手动在下方文本框全选复制。', true);
+    }
+  });
+</script>
+
+</body>
+</html>
