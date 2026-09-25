@@ -217,7 +217,7 @@
       border-radius: 10px;
       padding: 16px 20px;
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
       gap: 14px;
       font-size: 13px;
     }
@@ -284,39 +284,21 @@
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
     }
 
-    /* 代码块包装容器与控制栏 */
-    .code-block-wrapper {
+    /* 代码块与折叠容器样式 */
+    .markdown-body details summary {
+      outline: none;
+      transition: color 0.15s;
+    }
+    .markdown-body details summary:hover {
+      color: var(--accent);
+    }
+    .markdown-body pre {
       position: relative;
-      margin: 14px 0;
-      border: 1px solid var(--border-default);
-      border-radius: 6px;
-      overflow: hidden;
-      background-color: #f6f8fa;
     }
-    .code-block-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 6px 12px;
-      background: #f1f5f9;
-      border-bottom: 1px solid var(--border-default);
-      font-size: 12px;
-      color: var(--text-muted);
-      user-select: none;
-    }
-    .code-block-meta {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size: 12px;
-    }
-    .code-block-actions {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .code-action-btn {
+    .code-copy-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
       font-size: 11.5px;
       padding: 2px 8px;
       border-radius: 4px;
@@ -324,20 +306,16 @@
       background: #ffffff;
       color: var(--text-muted);
       cursor: pointer;
-      transition: background-color 0.15s, color 0.15s;
+      opacity: 0;
+      transition: opacity 0.15s, background-color 0.15s;
     }
-    .code-action-btn:hover {
-      background: #e9ecef;
+    .markdown-body pre:hover .code-copy-btn,
+    .code-copy-btn:focus {
+      opacity: 1;
+    }
+    .code-copy-btn:hover {
+      background: #f3f4f6;
       color: var(--text-main);
-    }
-    .code-block-wrapper pre {
-      margin: 0 !important;
-      border: none !important;
-      border-radius: 0 !important;
-      background: #ffffff !important;
-    }
-    .code-block-wrapper.collapsed pre {
-      display: none !important;
     }
 
     /* 源码纯文本视图 */
@@ -354,6 +332,8 @@
       resize: vertical;
       outline: none;
       box-sizing: border-box;
+      word-break: break-all;
+      white-space: pre-wrap;
     }
 
     /* 回到顶部按钮 */
@@ -561,9 +541,10 @@
       <label><input type="checkbox" id="optExtractSystemPrompt" checked> 提取系统指令 (System Instruction)</label>
       <label><input type="checkbox" id="optEmbedTextDocAsCode" checked> 文本附件以代码块置顶</label>
       <label><input type="checkbox" id="optAutoDownloadDrive" checked> 自动同步云端多媒体与文档</label>
+      <label><input type="checkbox" id="optEnableCollapseAllCode" checked> 允许折叠所有代码块 (本地/预览通用)</label>
       <label>
         <input type="checkbox" id="optAutoCollapseUserCode" checked>
-        折叠用户长代码 (超过
+        默认折叠用户长代码 (超过
         <input type="number" id="optUserCodeLineThreshold" value="20" min="5" max="500" onclick="event.stopPropagation()">
         行)
       </label>
@@ -615,9 +596,6 @@
   </div>
 
   <script>
-    /**
-     * 基础应用配置与授权作用域
-     */
     const CONFIG = {
       GOOGLE_CLIENT_ID: '852360108690-naniu3i5sj7frv72de7jn8vq5578bd2b.apps.googleusercontent.com',
       DRIVE_SCOPE: 'https://www.googleapis.com/auth/drive.readonly',
@@ -626,7 +604,6 @@
       STORAGE_KEY_FLAG: 'ai_studio_has_authorized'
     };
 
-    // 应用运行状态
     let tokenClient = null;
     let accessToken = null;
     let driveFolderId = null;
@@ -638,7 +615,6 @@
 
     const driveAttachmentCache = new Map();
 
-    // DOM 元素引用
     const headerTitle = document.getElementById('headerTitle');
     const readerActions = document.getElementById('readerActions');
     const authBadge = document.getElementById('authBadge');
@@ -680,14 +656,12 @@
     const optExtractSystemPrompt = document.getElementById('optExtractSystemPrompt');
     const optEmbedTextDocAsCode = document.getElementById('optEmbedTextDocAsCode');
     const optAutoDownloadDrive = document.getElementById('optAutoDownloadDrive');
+    const optEnableCollapseAllCode = document.getElementById('optEnableCollapseAllCode');
     const optAutoCollapseUserCode = document.getElementById('optAutoCollapseUserCode');
     const optUserCodeLineThreshold = document.getElementById('optUserCodeLineThreshold');
 
     marked.setOptions({ breaks: true, gfm: true });
 
-    /**
-     * 身份验证与 Token 管理
-     */
     function restoreTokenSession() {
       const savedToken = localStorage.getItem(CONFIG.STORAGE_KEY_TOKEN);
       const expiry = localStorage.getItem(CONFIG.STORAGE_KEY_EXPIRY);
@@ -770,9 +744,6 @@
       if (tokenClient) tokenClient.requestAccessToken({ prompt: 'consent' });
     });
 
-    /**
-     * 视图控制
-     */
     btnViewRendered.addEventListener('click', () => {
       btnViewRendered.classList.add('active');
       btnViewRaw.classList.remove('active');
@@ -796,17 +767,11 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
 
-    /**
-     * 代码块包装与折叠装配
-     */
-    function setupCodeBlocks(container) {
+    function setupRenderedCodeBlocks(container) {
       const codeBlocks = container.querySelectorAll('pre code');
-      const threshold = parseInt(optUserCodeLineThreshold.value, 10) || 20;
-      const shouldCollapseUser = optAutoCollapseUserCode.checked;
-
       codeBlocks.forEach((codeEl) => {
         const preEl = codeEl.parentElement;
-        if (!preEl || preEl.parentElement.classList.contains('code-block-wrapper')) return;
+        if (!preEl) return;
 
         if (typeof hljs !== 'undefined' && typeof hljs.highlightElement === 'function') {
           try {
@@ -814,64 +779,20 @@
           } catch (e) {}
         }
 
-        const rawCode = codeEl.innerText;
-        const lineCount = rawCode.split('\n').length;
-
-        const messageCard = preEl.closest('[data-message-role]');
-        const messageRole = messageCard ? messageCard.getAttribute('data-message-role') : '';
-        const isUserMessage = messageRole === 'user';
-        const defaultCollapsed = isUserMessage && shouldCollapseUser && lineCount >= threshold;
-
-        const wrapper = document.createElement('div');
-        wrapper.className = `code-block-wrapper${defaultCollapsed ? ' collapsed' : ''}`;
-
-        const header = document.createElement('div');
-        header.className = 'code-block-header';
-
-        const meta = document.createElement('div');
-        meta.className = 'code-block-meta';
-        meta.innerHTML = `
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.75;">
-            <polyline points="16 18 22 12 16 6"></polyline>
-            <polyline points="8 6 2 12 8 18"></polyline>
-          </svg>
-          <span style="font-size: 11.5px; opacity: 0.75;">${lineCount} 行代码</span>
-        `;
-
-        const actions = document.createElement('div');
-        actions.className = 'code-block-actions';
-
-        const toggleBtn = document.createElement('button');
-        toggleBtn.className = 'code-action-btn';
-        toggleBtn.textContent = defaultCollapsed ? '展开' : '折叠';
-        toggleBtn.onclick = () => {
-          const isCollapsed = wrapper.classList.toggle('collapsed');
-          toggleBtn.textContent = isCollapsed ? '展开' : '折叠';
-        };
+        if (preEl.querySelector('.code-copy-btn')) return;
 
         const copyBtn = document.createElement('button');
-        copyBtn.className = 'code-action-btn';
+        copyBtn.className = 'code-copy-btn';
         copyBtn.textContent = '复制';
         copyBtn.onclick = async () => {
-          await writeClipboardText(rawCode);
+          await writeClipboardText(codeEl.innerText);
           copyBtn.textContent = '已复制 ✓';
           setTimeout(() => { copyBtn.textContent = '复制'; }, 1500);
         };
-
-        actions.appendChild(toggleBtn);
-        actions.appendChild(copyBtn);
-        header.appendChild(meta);
-        header.appendChild(actions);
-
-        preEl.parentNode.insertBefore(wrapper, preEl);
-        wrapper.appendChild(header);
-        wrapper.appendChild(preEl);
+        preEl.appendChild(copyBtn);
       });
     }
 
-    /**
-     * 云端硬盘检索与加载
-     */
     function isEligibleChatFile(fileName) {
       if (!fileName) return false;
       const lower = fileName.toLowerCase();
@@ -995,9 +916,6 @@
       }
     }
 
-    /**
-     * 本地文件解析
-     */
     dropzoneArea.addEventListener('click', () => localFileInput.click());
     dropzoneArea.addEventListener('dragover', (e) => { e.preventDefault(); dropzoneArea.classList.add('dragover'); });
     dropzoneArea.addEventListener('dragleave', () => { dropzoneArea.classList.remove('dragover'); });
@@ -1033,6 +951,8 @@
       optShowTimestamp,
       optExtractSystemPrompt,
       optEmbedTextDocAsCode,
+      optAutoDownloadDrive,
+      optEnableCollapseAllCode,
       optAutoCollapseUserCode,
       optUserCodeLineThreshold
     ].forEach(input => {
@@ -1102,7 +1022,7 @@
           if (metaRes.ok) {
             const meta = await metaRes.json();
             if (meta.mimeType) mimeType = meta.mimeType;
-            if (meta.name) fileName = meta.name;
+            if (meta.name) fileName = String(meta.name).replace(/[\r\n]+/g, '').trim();
           }
         } catch (e) {}
 
@@ -1122,7 +1042,10 @@
         } else {
           dataUrl = await new Promise((resolve, reject) => {
             const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
+            reader.onloadend = () => {
+              const res = typeof reader.result === 'string' ? reader.result.replace(/[\r\n\s]+/g, '') : reader.result;
+              resolve(res);
+            };
             reader.onerror = reject;
             reader.readAsDataURL(blob);
           });
@@ -1136,9 +1059,6 @@
       }
     }
 
-    /**
-     * 同步附件与进度追踪
-     */
     async function syncDriveAttachments() {
       if (!accessToken) return;
 
@@ -1152,7 +1072,6 @@
       const total = fileIds.size;
       if (total === 0) return;
 
-      // 展现同步进度栏
       syncProgressCard.style.display = 'block';
       syncProgressCard.style.opacity = '1';
       syncProgressFill.style.width = '0%';
@@ -1172,7 +1091,6 @@
       syncProgressText.textContent = `所有云端附件同步完毕`;
       renderMarkdownContent();
 
-      // 同步完毕后平滑收起
       setTimeout(() => {
         syncProgressCard.style.opacity = '0';
         setTimeout(() => { syncProgressCard.style.display = 'none'; }, 300);
@@ -1222,7 +1140,8 @@
             }
             const inline = part.inlineData || part.inline_data;
             if (inline && inline.mimeType) {
-              attachments.push({ type: 'inline', mimeType: inline.mimeType, data: inline.data });
+              const cleanData = String(inline.data || '').replace(/[\r\n\s]+/g, '');
+              attachments.push({ type: 'inline', mimeType: inline.mimeType, data: cleanData });
             }
           });
         } else if (typeof chunk.text === 'string') {
@@ -1255,6 +1174,48 @@
     }
 
     /**
+     * 将代码块包装为可折叠结构（兼容本地 Markdown 阅读器与网页端）
+     */
+    function formatMessageCodeBlocks(text, role, threshold, autoCollapseUser, enableCollapseAll) {
+      if (!text) return '';
+
+      // 修复因异常换行被切断的图片语法，确保 ![alt](url) 紧密相连
+      text = text.replace(/!\[([^\]]*)\]\s*\n+\s*\(([^)]+)\)/g, '![$1]($2)');
+
+      if (!enableCollapseAll && !autoCollapseUser) {
+        return text;
+      }
+
+      const codeBlockRegex = /(^|\n)(```[^\n]*\n[\s\S]*?\n```)(?=\n|$)/g;
+
+      return text.replace(codeBlockRegex, (match, prefix, fullBlock) => {
+        const firstNewline = fullBlock.indexOf('\n');
+        const lastFence = fullBlock.lastIndexOf('```');
+        const codeBody = fullBlock.slice(firstNewline + 1, lastFence);
+        const lineCount = codeBody.trimEnd().split('\n').length;
+
+        const isUser = role === 'user';
+        const isLongUserCode = isUser && autoCollapseUser && lineCount >= threshold;
+
+        if (!enableCollapseAll && !isLongUserCode) {
+          return match;
+        }
+
+        // 用户长代码默认折叠（无 open）；AI 代码及短代码默认展开（带 open），均支持手动折叠
+        const openAttr = isLongUserCode ? '' : ' open';
+        const summaryLabel = `代码片段 (${lineCount} 行)`;
+
+        return `${prefix}<details${openAttr} style="margin: 12px 0; border: 1px solid #d0d7de; border-radius: 6px; padding: 6px 12px; background: #f6f8fa;">\n` +
+          `<summary style="cursor: pointer; font-size: 12px; color: #57606a; user-select: none;">` +
+          `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 5px; opacity: 0.75;"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>` +
+          `<b>${summaryLabel}</b>` +
+          `</summary>\n\n` +
+          `${fullBlock}\n\n` +
+          `</details>`;
+      });
+    }
+
+    /**
      * Markdown 生成与排版渲染
      */
     function renderMarkdownContent() {
@@ -1267,6 +1228,9 @@
       const showTimestamp = optShowTimestamp.checked;
       const extractSysPrompt = optExtractSystemPrompt.checked;
       const embedTextAsCode = optEmbedTextDocAsCode.checked;
+      const enableCollapseAll = optEnableCollapseAllCode.checked;
+      const autoCollapseUser = optAutoCollapseUserCode.checked;
+      const threshold = parseInt(optUserCodeLineThreshold.value, 10) || 20;
 
       let md = `# 对话记录: ${documentTitle}\n\n`;
 
@@ -1316,7 +1280,8 @@
                     `\`\`\`${lang}\n${cached.textContent}\n\`\`\`\n\n` +
                     `</details>\n\n`;
                 } else if (cached.mimeType && cached.mimeType.startsWith('image/')) {
-                  nonTextAttachmentsMd += `![${cached.fileName || '云端图片'}](${cached.dataUrl})\n\n`;
+                  const cleanUrl = String(cached.dataUrl || '').replace(/[\r\n\s]+/g, '');
+                  nonTextAttachmentsMd += `![${escapeHtml(cached.fileName || '云端图片')}](${cleanUrl})\n\n`;
                 } else if (cached.mimeType && cached.mimeType.startsWith('audio/')) {
                   nonTextAttachmentsMd += `<audio controls src="${cached.dataUrl}"></audio>\n\n`;
                 } else {
@@ -1332,7 +1297,8 @@
               }
             } else if (att.type === 'inline') {
               if (att.mimeType.startsWith('image/')) {
-                nonTextAttachmentsMd += `![附件图片](data:${att.mimeType};base64,${att.data})\n\n`;
+                const cleanData = String(att.data || '').replace(/[\r\n\s]+/g, '');
+                nonTextAttachmentsMd += `![附件图片](data:${att.mimeType};base64,${cleanData})\n\n`;
               } else if (att.mimeType.startsWith('audio/')) {
                 nonTextAttachmentsMd += `<audio controls src="data:${att.mimeType};base64,${att.data}"></audio>\n\n`;
               } else {
@@ -1353,7 +1319,8 @@
           }
         }
 
-        const bodySection = msg.texts.join('\n\n').trim();
+        const rawBodyText = msg.texts.join('\n\n').trim();
+        const bodySection = formatMessageCodeBlocks(rawBodyText, msg.role, threshold, autoCollapseUser, enableCollapseAll);
 
         if (useCardLayout) {
           const isUser = msg.role === 'user';
@@ -1385,16 +1352,13 @@
       const rawHtml = marked.parse(currentMarkdown);
       const cleanHtml = DOMPurify.sanitize(rawHtml, {
         ADD_TAGS: ['audio', 'source', 'details', 'summary'],
-        ADD_ATTR: ['controls', 'target', 'style', 'data-message-role']
+        ADD_ATTR: ['controls', 'target', 'style', 'data-message-role', 'open']
       });
 
       renderedContainer.innerHTML = cleanHtml;
-      setupCodeBlocks(renderedContainer);
+      setupRenderedCodeBlocks(renderedContainer);
     }
 
-    /**
-     * 辅助工具方法
-     */
     function escapeHtml(str) {
       if (!str) return '';
       return String(str)
