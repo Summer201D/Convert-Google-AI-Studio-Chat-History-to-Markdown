@@ -79,7 +79,7 @@
       gap: 12px;
     }
 
-    /* 视图切换胶囊 */
+    /* 视图切换分段控制 */
     .view-segmented-control {
       display: inline-flex;
       background: var(--color-subtle);
@@ -106,7 +106,7 @@
       box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
     }
 
-    /* 基础按钮 */
+    /* 基础按钮规范 */
     .btn {
       padding: 6px 14px;
       border: 1px solid var(--color-border);
@@ -399,7 +399,7 @@
       color: var(--color-brand);
     }
 
-    /* 云端模态弹窗 */
+    /* 云端硬盘选择弹窗 */
     .modal-overlay {
       position: fixed;
       inset: 0;
@@ -552,7 +552,7 @@
     <div class="cloud-card">
       <div style="font-size: 28px; margin-bottom: 8px;">☁️</div>
       <h3 style="margin: 0 0 8px 0; font-size: 16px;">读取 Google 云端硬盘会话</h3>
-      <p style="margin: 0 0 16px 0; font-size: 13px; color: var(--color-text-muted);">直接检索 Google AI Studio 云端目录并载入会话</p>
+      <p style="margin: 0 0 16px 0; font-size: 13px; color: var(--color-text-muted);">检索 Google AI Studio 专属目录并载入会话</p>
       <button class="btn btn-primary" id="btnOpenDriveBrowser" style="padding: 8px 20px; font-size: 13.5px;">
         浏览云端文件
       </button>
@@ -614,7 +614,7 @@
     <textarea class="raw-markdown-editor" id="containerRawMarkdown" readonly style="display: none;"></textarea>
   </main>
 
-  <!-- 悬浮回到顶部 -->
+  <!-- 悬浮置顶按钮 -->
   <button id="btnScrollToTop" class="scroll-top-btn" title="回到顶部">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
       <path d="M18 15l-6-6-6 6"/>
@@ -635,7 +635,7 @@
         <div style="text-align: center; padding: 32px 0; color: var(--color-text-muted);">正在检索云端数据...</div>
       </div>
       <div class="modal-footer">
-        <span id="labelModalCounter" style="font-size: 12px; color: var(--color-text-muted);">已筛选 0 个文件</span>
+        <span id="labelModalCounter" style="font-size: 12px; color: var(--color-text-muted);">已筛选 0 个会话文件</span>
         <button id="btnLoadMoreFiles" class="btn" style="font-size: 12px; padding: 4px 10px; display: none;">加载更多</button>
       </div>
     </div>
@@ -643,7 +643,7 @@
 
   <script>
     /**
-     * 应用程序配置中心
+     * 基础配置
      */
     const CONFIG = {
       GOOGLE_CLIENT_ID: '852360108690-naniu3i5sj7frv72de7jn8vq5578bd2b.apps.googleusercontent.com',
@@ -654,20 +654,21 @@
     };
 
     /**
-     * 运行态全局变量
+     * 全局状态管理
      */
     let googleTokenClient = null;
     let currentAccessToken = null;
-    let targetDriveFolderId = null;
+    let targetFolderIds = [];
     let driveNextPaginationToken = null;
-    let driveLoadedFileList = [];
+    let driveFileRegistry = new Map();
+    let isDriveFetching = false;
     let generatedMarkdownDocument = '';
     let currentDocumentName = 'chat_export';
     let currentSessionData = null;
 
     const attachmentMediaCache = new Map();
 
-    // DOM 元素引用
+    // DOM 引用
     const labelHeaderTitle = document.getElementById('labelHeaderTitle');
     const panelReaderActions = document.getElementById('panelReaderActions');
     const containerAuthBadge = document.getElementById('containerAuthBadge');
@@ -713,11 +714,10 @@
     const cfgAutoCollapseLongCode = document.getElementById('cfgAutoCollapseLongCode');
     const cfgCodeLineThreshold = document.getElementById('cfgCodeLineThreshold');
 
-    // 配置 Markdown 解析器基础规则
     marked.setOptions({ breaks: true, gfm: true });
 
     /**
-     * 认证与授权状态管理
+     * 认证与授权管理
      */
     function initializeAuthClient() {
       if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
@@ -801,7 +801,7 @@
     });
 
     /**
-     * 视图切换与控制
+     * 视图控制
      */
     btnToggleRenderedView.addEventListener('click', () => {
       btnToggleRenderedView.classList.add('active');
@@ -826,9 +826,6 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
 
-    /**
-     * 增强渲染容器中的代码块
-     */
     function attachCodeBlockEnhancements(container) {
       const codeElements = container.querySelectorAll('pre code');
       codeElements.forEach((codeEl) => {
@@ -838,9 +835,7 @@
         if (typeof hljs !== 'undefined' && typeof hljs.highlightElement === 'function') {
           try {
             hljs.highlightElement(codeEl);
-          } catch (e) {
-            // 忽略非标准语言的高亮失败
-          }
+          } catch (e) {}
         }
 
         if (preEl.querySelector('.code-copy-button')) return;
@@ -857,10 +852,7 @@
       });
     }
 
-    /**
-     * 云端硬盘检索逻辑
-     */
-    function isValidChatFilename(filename) {
+    function isEligibleChatFile(filename) {
       if (!filename) return false;
       const lower = filename.toLowerCase();
       const nonChatExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.pdf', '.zip', '.mp3', '.mp4'];
@@ -868,6 +860,9 @@
       return !filename.includes('.') || lower.endsWith('.json') || lower.endsWith('.txt');
     }
 
+    /**
+     * 云端硬盘检索逻辑
+     */
     btnOpenDriveBrowser.addEventListener('click', () => {
       if (!currentAccessToken) {
         if (googleTokenClient) {
@@ -890,11 +885,11 @@
       modalDriveBrowser.style.display = 'flex';
       inputModalSearch.value = '';
       driveNextPaginationToken = null;
-      driveLoadedFileList = [];
+      driveFileRegistry.clear();
       containerDriveList.innerHTML = '<div style="text-align: center; padding: 32px 0; color: var(--color-text-muted);">正在检索 Google AI Studio 会话...</div>';
 
       try {
-        if (!targetDriveFolderId) {
+        if (targetFolderIds.length === 0) {
           const folderQuery = encodeURIComponent("name='Google AI Studio' and mimeType='application/vnd.google-apps.folder' and trashed=false");
           const folderRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${folderQuery}`, {
             headers: { 'Authorization': `Bearer ${currentAccessToken}` }
@@ -907,45 +902,62 @@
 
           const folderData = await folderRes.json();
           if (folderData.files && folderData.files.length > 0) {
-            targetDriveFolderId = folderData.files[0].id;
+            targetFolderIds = folderData.files.map(f => f.id);
+          } else {
+            throw new Error('未在云端硬盘根路径检索到 "Google AI Studio" 文件夹');
           }
         }
+
         await fetchDriveFilesPage();
       } catch (err) {
         containerDriveList.innerHTML = `<div style="text-align: center; padding: 24px 0; color: var(--color-danger);">${escapeHtml(err.message)}</div>`;
+        labelModalCounter.textContent = '检索未完成';
       }
     }
 
     async function fetchDriveFilesPage() {
-      let queryCondition = "trashed=false";
-      if (targetDriveFolderId) {
-        queryCondition += ` and '${targetDriveFolderId}' in parents`;
-      } else {
-        queryCondition += " and (mimeType='application/json' or name contains 'prompt')";
+      if (isDriveFetching) return;
+      isDriveFetching = true;
+
+      try {
+        const parentClauses = targetFolderIds.map(id => `'${id}' in parents`).join(' or ');
+        const queryCondition = `trashed=false and (${parentClauses})`;
+
+        let requestUrl = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(queryCondition)}&orderBy=modifiedTime desc&pageSize=1000&fields=nextPageToken,files(id,name,modifiedTime,mimeType)`;
+        if (driveNextPaginationToken) {
+          requestUrl += `&pageToken=${driveNextPaginationToken}`;
+        }
+
+        const res = await fetch(requestUrl, {
+          headers: { 'Authorization': `Bearer ${currentAccessToken}` }
+        });
+
+        if (!res.ok) {
+          if (res.status === 401) {
+            clearAuthSession();
+            throw new Error('授权会话已失效，请重新连接');
+          }
+          throw new Error(`获取云端文件失败 (${res.status})`);
+        }
+
+        const data = await res.json();
+        driveNextPaginationToken = data.nextPageToken || null;
+        btnLoadMoreFiles.style.display = driveNextPaginationToken ? 'inline-block' : 'none';
+
+        if (data.files && data.files.length > 0) {
+          data.files.forEach(file => {
+            if (isEligibleChatFile(file.name) && !driveFileRegistry.has(file.id)) {
+              driveFileRegistry.set(file.id, file);
+            }
+          });
+        }
+
+        renderDriveBrowserList(inputModalSearch.value.trim());
+      } catch (err) {
+        containerDriveList.innerHTML = `<div style="text-align: center; padding: 24px 0; color: var(--color-danger);">${escapeHtml(err.message)}</div>`;
+      } finally {
+        isDriveFetching = false;
       }
-
-      let requestUrl = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(queryCondition)}&orderBy=modifiedTime desc&pageSize=100&fields=nextPageToken,files(id,name,modifiedTime,mimeType)`;
-      if (driveNextPaginationToken) {
-        requestUrl += `&pageToken=${driveNextPaginationToken}`;
-      }
-
-      const res = await fetch(requestUrl, {
-        headers: { 'Authorization': `Bearer ${currentAccessToken}` }
-      });
-
-      if (!res.ok) {
-        throw new Error(`获取云端文件失败 (${res.status})`);
-      }
-
-      const data = await res.json();
-      driveNextPaginationToken = data.nextPageToken || null;
-      btnLoadMoreFiles.style.display = driveNextPaginationToken ? 'inline-block' : 'none';
-
-      if (data.files && data.files.length > 0) {
-        driveLoadedFileList = driveLoadedFileList.concat(data.files.filter(f => isValidChatFilename(f.name)));
-      }
-
-      renderDriveBrowserList(inputModalSearch.value.trim());
     }
 
     btnLoadMoreFiles.addEventListener('click', () => {
@@ -960,11 +972,12 @@
     });
 
     function renderDriveBrowserList(filterKeyword = '') {
+      const allFiles = Array.from(driveFileRegistry.values());
       const filteredList = filterKeyword
-        ? driveLoadedFileList.filter(f => f.name.toLowerCase().includes(filterKeyword.toLowerCase()))
-        : driveLoadedFileList;
+        ? allFiles.filter(f => f.name.toLowerCase().includes(filterKeyword.toLowerCase()))
+        : allFiles;
 
-      labelModalCounter.textContent = `已筛选 ${filteredList.length} 个会话`;
+      labelModalCounter.textContent = `已筛选 ${filteredList.length} 个会话文件`;
 
       if (!filteredList.length) {
         containerDriveList.innerHTML = '<div style="text-align: center; padding: 32px 0; color: var(--color-text-muted);">未检索到相符的会话记录</div>';
@@ -1008,7 +1021,7 @@
     }
 
     /**
-     * 本地文件与拖放导入
+     * 本地文件导入
      */
     areaFileDropzone.addEventListener('click', () => inputLocalFile.click());
     areaFileDropzone.addEventListener('dragover', (e) => {
@@ -1050,7 +1063,6 @@
       }
     });
 
-    // 监听配置项变动并即时重绘
     [
       cfgCardLayout,
       cfgCollapseThoughts,
@@ -1068,7 +1080,7 @@
     });
 
     /**
-     * 会话解析与转换
+     * 会话数据解析
      */
     async function parseAndApplySession(rawJsonText) {
       try {
@@ -1206,9 +1218,6 @@
       }, 1800);
     }
 
-    /**
-     * 规范化抽取会话片段
-     */
     function extractConversationChunks(data) {
       if (!data) return [];
       if (Array.isArray(data)) return data;
@@ -1257,23 +1266,12 @@
             if (inline && inline.mimeType) {
               attachments.push({ type: 'inline', mimeType: inline.mimeType, data: inline.data });
             }
-
-            const fileData = part.fileData || part.file_data;
-            if (fileData && fileData.fileUri) {
-              attachments.push({ type: 'fileUri', mimeType: fileData.mimeType, uri: fileData.fileUri });
-            }
           });
         } else if (typeof chunk.text === 'string') {
           textBody = chunk.text;
         }
 
-        // 解析并分离文本中可能内嵌的思考标签
-        const thoughtTagRegex = /<thought>([\s\S]*?)<\/thought>/g;
-        let match;
-        while ((match = thoughtTagRegex.exec(textBody)) !== null) {
-          thoughtBody += (thoughtBody ? '\n\n' : '') + match[1].trim();
-        }
-        textBody = textBody.replace(thoughtTagRegex, '').trim();
+        textBody = textBody.replace(/thoughtSignature:\s*"[A-Za-z0-9+/=]+"/g, '').trim();
 
         if (chunk.driveImage && chunk.driveImage.id) {
           attachments.push({ type: 'driveImage', id: chunk.driveImage.id });
@@ -1420,8 +1418,6 @@
               } else {
                 mediaAttachmentsMd += `<span style="display:inline-block;padding:2px 8px;background:#e2e8f0;border-radius:4px;font-size:12px;margin-bottom:6px;">文件附件 (类型: <code>${item.mimeType}</code>)</span>\n\n`;
               }
-            } else if (item.type === 'fileUri') {
-              mediaAttachmentsMd += `<span style="display:inline-block;padding:2px 8px;background:#e2e8f0;border-radius:4px;font-size:12px;margin-bottom:6px;">远程文件 (URI: <code>${escapeHtml(item.uri)}</code>)</span>\n\n`;
             }
           });
         }
@@ -1478,7 +1474,7 @@
     }
 
     /**
-     * 辅助工具函数
+     * 通用辅助函数
      */
     function escapeHtml(str) {
       if (!str) return '';
